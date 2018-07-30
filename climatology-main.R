@@ -64,7 +64,6 @@ climatology <- climatology %>%
 # plot(pixel1$id_date, pixel1$D, type="l")
 # plot(pixel1$id_date, pixel1$D_mav, type="l")
 
-
 # Funzione che trova i punti di zero
 find_zero_points <- function(x)
 {
@@ -75,14 +74,13 @@ find_zero_points <- function(x)
     
     # List of zero points
     zero_points <- list()
-    
     # This loop finds the zero points
     for(i in unique_id_pixel)
     {
-        print(paste("Finding zeros of ", unique_id_pixel[i]))
-        # Time axis
+        print(paste("Finding zeros of pixel ", unique_id_pixel[i]))
+        # Get time axis for pixel
         time_axis <- x %>% filter(id_pixel == i) %>% select(id_date) %>% pull()
-        # Derivative smoothed with running average
+        # Select derivative smoothed with running average (moving average)
         derivative <- x %>% filter(id_pixel == i) %>% select(D_mav) %>% pull()
         
         # Add a zero to have vector of same length.
@@ -95,19 +93,26 @@ find_zero_points <- function(x)
         # The bloom is in between these days
         print(paste(time_axis[ix], time_axis[ix-1]))
         #stop(msg = "Stopped by user")
+        # Add found points to output list
         zero_points[[i]] <- c(time_axis[ix], time_axis[ix-1])
     }
+    
     return(zero_points)
 }
 
+# Find zero points
 zero_pts <- find_zero_points(climatology)
 
+# This function finds the number of blooms
 find_number_of_blooms <- function(x)
 {
+    # For each bloom you have 2 zero crossings -> for each zero crossing you have 2 points (before zero crossing and after crossing).
     return( sapply(x, function(x1){ length(x1)/4 }) )
 }
 
+# Find number of blooms
 n_blooms <- find_number_of_blooms(zero_pts)
+
 n_blooms
 table(n_blooms)
 
