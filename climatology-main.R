@@ -162,14 +162,16 @@ zero_pts <- find_zero_points(climatology)
 # Find number of blooms
 n_blooms <- find_number_of_blooms(zero_pts)
 
-hist(n_blooms)
-table(n_blooms)
-
 # L'intersezione con lo zero si trova indicando due punti quello prima e dopo l'intersezione.
 # -> N punti di zero = n_bloom * 4/2
 # -> Punti trovati = n_bloom * 4
 # -> -> Numero di bloom trovati = Punti trovati / 4
 
+# Barplot of frequency of number of blooms found
+table(n_blooms)
+barplot(table(n_blooms), main = "Frequency of number of blooms found")
+
+# The data is arranged in a dataframe
 zero_points_df <- build_table(zero_pts, n_blooms)
 
 rm(n_blooms, zero_pts)
