@@ -16,6 +16,10 @@ require(dplyr)        # 0.7.4
 
 # Maximum number of allowed consecutive NAs. Mantiene solo i pixel con al più n NA consecutivi
 MAX_CONSECUTIVE_NA <- 2
+# Threshold percentage needed to calculate s index: median(chl) * (1 + THRESHOLD_PERCENTAGE). Defaults at 5%
+THRESHOLD_PERCENTAGE <- 0.05
+# Running average (or moving average) parameter
+RUNNING_AVERAGE_WINDOW <- 3
 
 #-------------------------------------------------------------------------------
 # Set paths
@@ -55,10 +59,8 @@ climatology <- nc_dataframe %>%
     summarise(avg_chl = mean(CHL1_mean, na.rm=T),
               n_observations_used_per_date = sum(!is.na(CHL1_mean))) %>%
     # Calculate, for each pixel: how many missing data in the climatology (NA_in_climatology_per_pixel) 
-    #                           how many observations used (per pixel)
     #                           should the pixel be kept? (keep_pixel_NA_consecutive: TRUE keep, FALSE drop)
     mutate(NA_in_climatology_per_pixel = sum(is.na(avg_chl)),
-           n_observations_used_per_pixel = sum(n_observations_used_per_date),
            # If the number of consecutive NAs is > n then pixel should be removed from analysis
            keep_pixel_NA_consecutive = pixel_consecutive_NA(avg_chl, n = MAX_CONSECUTIVE_NA)) %>%
     # Remove grouping by pixel
@@ -70,17 +72,13 @@ climatology <- nc_dataframe %>%
     # Calculate: final number of pixels to be used for the analysis (pixels_out_analysis)
     #           percentage of pixels kept (pixels_kept_percentage)
     mutate(pixels_out_analysis = n_distinct(id_pixel),
-           pixels_kept_percentage = pixels_out_analysis / pixels_in_analysis * 100)
+           total_pixels_kept_percentage = pixels_out_analysis / pixels_in_analysis * 100) %>%
+    # Remove unused columns
+    select(-keep_pixel_NA_consecutive,
+           -pixels_in_analysis,
+           -pixels_out_analysis)
 
-###########################
-# # Set NaN to zero for the purpose of this script
-# climatology <- climatology %>%
-#     mutate(avg_chl = case_when(
-#         is.na(avg_chl) ~ 0,
-#         TRUE ~ identity(avg_chl)
-#     ))
-###########################
-
+rm(pixel_consecutive_NA, MAX_CONSECUTIVE_NA)
 #-------------------------------------------------------------------------------
 # Add info about lon and lat
 
@@ -92,16 +90,35 @@ climatology <- nc_dataframe %>%
 #-------------------------------------------------------------------------------
 # Interpolate missing data with mice
 
-imputed_df <- mice(select(climatology, avg_chl, lon, lat), method = "pmm")
+# Obtain the mice object by interpolating with mice
+imputed_df <- climatology %>%
+    select(avg_chl, lon, lat) %>%
+    mice(method = "pmm", m = 1) # m = 1 for fast testing: default is 5
 
-densityplot(imputed_df, main = "Density of actual data vs imputed data")
+# Show density plot of imputed vs actual data
+densityplot(imputed_df, main = "Density of imputed data vs actual data")
 
+# Complete imputed df # 1
 imputed_df <- complete(imputed_df, 1)
 
 # Add interpolated chl to climatology
 climatology$avg_chl_interpolated <- imputed_df$avg_chl
 
 rm(imputed_df)
+#-------------------------------------------------------------------------------
+# Ora in dataframe climatology:
+
+# - id_pixel
+# - id_date
+# - avg_chl
+# - lon
+# - lat
+# - n_observations_used_per_date: numero di osservazioni utilizzate per calcolare la
+#                               climatologia in quella data per quel pixel
+# - NA_in_climatology_per_pixel: numero di NA presenti in climatologia per quel pixel
+# - total_pixels_kept_percentage: percentuale di pixel mantenuti sul totale di pixel analizzati
+# - avg_chl_interpolated: climatologia interpolata con mice.
+
 #-------------------------------------------------------------------------------
 # Calculate useful indeces over the interpolated climatology
 
@@ -114,17 +131,13 @@ climatology <- climatology %>%
     #                           C = cumulative sum of anomalies
     #                           D = time derivative of cumulative sum of anomalies
     #                           D_mav = moving average (or running average of derivative)
-    mutate(s = median(avg_chl_interpolated, na.rm=T)*(1 + 0.05), # S: threshold median + 5%
+    mutate(s = median(avg_chl_interpolated)*(1 + THRESHOLD_PERCENTAGE), # S: threshold median + 5%
            A = avg_chl_interpolated - s, # anomalie
            C = cumsum(A), # somma cumulata
-           D = (C - dplyr::lag(C))/8, # derivata temporale
-           D_mav = TTR::runMean(D, 3)) %>% # Applico moving average alla derivata
+           D = (C - dplyr::lag(C)) / 8, # derivata temporale
+           D_mav = TTR::runMean(D, RUNNING_AVERAGE_WINDOW)) %>% # Applico moving average alla derivata
     # Remove grouping by pixel
     ungroup()
-
-# Climatologia + indici
-#View(climatology)
-#climatology
 
 #Curiosità guardiamo le serie storiche del pixel 1.
 pixel1 <- climatology %>% filter(id_pixel == 1730)
@@ -135,7 +148,7 @@ plot(pixel1$id_date, pixel1$C, type="l")
 plot(pixel1$id_date, pixel1$D, type="l")
 plot(pixel1$id_date, pixel1$D_mav, type="l")
 
-rm(pixel1)
+rm(pixel1, RUNNING_AVERAGE_WINDOW, THRESHOLD_PERCENTAGE)
 #-------------------------------------------------------------------------------
 # Find zero points
 
@@ -153,18 +166,15 @@ hist(n_blooms)
 table(n_blooms)
 
 # L'intersezione con lo zero si trova indicando due punti quello prima e dopo l'intersezione.
-# quindi: punti trovati = n_bloom * 4
-
-# N punti di zero = a n_bloom * 4/2
-
-# n_bloom    1      1.5    2     2.5    3     3.5    4    4.5    5 
-# frequency  1507   27    1167   13    403    5      68    1     9 
+# -> N punti di zero = n_bloom * 4/2
+# -> Punti trovati = n_bloom * 4
+# -> -> Numero di bloom trovati = Punti trovati / 4
 
 zero_points_df <- build_table(zero_pts, n_blooms)
 
 rm(n_blooms, zero_pts)
 #-------------------------------------------------------------------------------
-# Flag pixels with more than 3 blooms and calculate boom length
+# Flag pixels with more than 3 blooms and calculate bloom length
 
 zero_points_df <- zero_points_df %>%
     mutate(flagged = n_blooms >=3 ) %>%
