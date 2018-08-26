@@ -177,7 +177,7 @@ rm(n_blooms, zero_pts)
 # Flag pixels with more than 3 blooms and calculate bloom length
 
 zero_points_df <- zero_points_df %>%
-    mutate(flagged = n_blooms >=3 ) %>%
+    mutate(flagged = n_blooms >= 3 ) %>%
     arrange(id_pixel, id_date_zero_crossing)
 
 # Extract only valid pixels (less than 3 blooms)
