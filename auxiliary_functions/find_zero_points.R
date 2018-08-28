@@ -1,5 +1,19 @@
-# Funzione che trova i punti di zero
-find_zero_points <- function(x)
+################################################################################
+#' Given a dataframe with n timeseries (i.e. n pixels, that is a time series
+#' for every pixel), this function finds the zero points of the time series
+#' and returns a list.
+#' 
+#' The number of elements of the list is equal to the number of time series analyzed
+#' (i.e. the number of pixels)
+#' 
+#' Every element of the list is the set of points that identify zero points in 
+#' each time series.
+#' 
+#' @param x a dataframe containing a set of time series identified by a variable id_pixel
+#' @param id_date_name name of id_date
+#' @return a list as explained above
+#' 
+find_zero_points <- function(x, id_date_name="id_date", D_mav_name = "D_mav")
 {
     # Find all the unique pixel ids
     unique_id_pixel <- x %>%
@@ -18,9 +32,9 @@ find_zero_points <- function(x)
     {
         print(paste("Finding zeros of pixel ", i))
         # Get time axis for pixel
-        time_axis <- x %>% filter(id_pixel == i) %>% select(id_date) %>% pull()
+        time_axis <- x %>% filter(id_pixel == i) %>% select_(id_date_name) %>% pull()
         # Select derivative smoothed with running average (moving average)
-        derivative <- x %>% filter(id_pixel == i) %>% select(D_mav) %>% pull()
+        derivative <- x %>% filter(id_pixel == i) %>% select_(D_mav_name) %>% pull()
         
         # Add a zero to have vector of same length.
         updn <- c(0, diff(sign(derivative)))

@@ -2,6 +2,9 @@
 # Clean workspace
 rm(list=ls())
 
+# Set seed
+set.seed(332423)
+
 #-------------------------------------------------------------------------------
 # Load required libraries
 
@@ -148,7 +151,7 @@ plot(pixel1$id_date, pixel1$C, type="l")
 plot(pixel1$id_date, pixel1$D, type="l")
 plot(pixel1$id_date, pixel1$D_mav, type="l")
 
-rm(pixel1, RUNNING_AVERAGE_WINDOW, THRESHOLD_PERCENTAGE)
+rm(pixel1)
 #-------------------------------------------------------------------------------
 # Find zero points
 
@@ -176,36 +179,182 @@ zero_points_df <- build_table(zero_pts, n_blooms)
 
 rm(n_blooms, zero_pts)
 #-------------------------------------------------------------------------------
-# Flag pixels with more than 3 blooms and calculate bloom length
+# Flag pixels with 3 or more blooms
 
 zero_points_df <- zero_points_df %>%
     mutate(flagged = n_blooms >= 3 ) %>%
     arrange(id_pixel, id_date_zero_crossing)
 
-# Extract only valid pixels (less than 3 blooms)
-valid_pixels_df <- zero_points_df %>%
-    filter(flagged == TRUE)
+#-------------------------------------------------------------------------------
+# Content of zero_points_df:
 
-# Interpolate new pixels and then find zero points again
+# - id_pixel
+# - id_date_zero_crossing: sequential points before and after zero-crossing found.
+# - n_blooms: number of blooms for this pixel
+# - flagged: TRUE if for this pixel the number of blooms found is >= 3.
 
-unique_valid_pixels <- valid_pixels_df %>% select(id_pixel) %>% distinct() %>% pull() 
+#-------------------------------------------------------------------------------
+# Increase resolution of chl from one observation every 8 days to 1 observation per day
+# The increase in resolution is obtained by interpolating with splines
 
-d <- climatology %>% filter(id_pixel == unique_valid_pixels[1]) %>% select(id_date, avg_chl_interpolated)
-time_series <- data.frame(id_date_extended = 1:328, id_pixel = rep(unique_valid_pixels[1], 328)) %>% tbl_df()
-time_series <- left_join(time_series, d, by = c("id_date_extended"="id_date"))
-time_series$avg_chl_interpolated2 <- imputeTS::na.interpolation(time_series$avg_chl_interpolated, option="spline")
-for(i in 2:length(unique_valid_pixels))
-{
-    d <- climatology %>% filter(id_pixel == unique_valid_pixels[i]) %>% select(id_date, avg_chl_interpolated)
-    time_series_1 <- data.frame(id_date_extended = 1:328, id_pixel = rep(unique_valid_pixels[i], 328)) %>% tbl_df()
-    time_series_1 <- left_join(time_series_1, d, by = c("id_date_extended"="id_date"))
-    time_series_1$avg_chl_interpolated2 <- imputeTS::na.interpolation(time_series_1$avg_chl_interpolated, option="spline")
-    
-    time_series <- rbind(time_series, time_series_1)
-}
+# Extract list of valid pixels (i.e. pixels with less than 3 blooms)
+unique_valid_pixels <- zero_points_df %>%
+    filter(flagged == FALSE) %>%
+    select(id_pixel) %>%
+    distinct() %>%
+    pull()
 
-View(time_series)
+# New climatology (with higher time resolution)
+climatology_high_res <- data.frame(id_pixel = rep(as.numeric(unique_valid_pixels), each=328),
+                       id_date_extended = rep(1:328, length(unique_valid_pixels))) %>%
+    as_tibble() %>%
+    arrange(id_pixel, id_date_extended)
 
-n <- 5
-plot(1:328, time_series$avg_chl_interpolated2[((n-1) * 328+1):(n*328)], type="l")
-lines(1:41*8, time_series$avg_chl_interpolated[((n-1) * 328+1):(n*328)][!is.na(time_series$avg_chl_interpolated[((n-1) * 328+1):(n*328)])], col="red", lty=10)
+# Add known chl values to new climatology
+climatology_high_res <- climatology %>%
+    select(id_pixel,
+           id_date,
+           avg_chl_interpolated,
+           D_mav) %>%
+    filter(id_pixel %in% unique_valid_pixels) %>%
+    left_join(climatology_high_res, ., by = c("id_pixel", "id_date_extended"="id_date"))
+
+# Interpolate using splines (by pixel)
+climatology_high_res <- climatology_high_res %>%
+    group_by(id_pixel) %>%
+    mutate(avg_chl_interpolated_high_res = imputeTS::na.interpolation(avg_chl_interpolated, option="stine"),
+           D_mav_high_res_from_stine = imputeTS::na.interpolation(D_mav, option="stine")) %>%
+    #mutate(avg_chl_interpolated_high_res = imputeTS::na.interpolation(avg_chl_interpolated, option="spline")) %>%
+    #mutate(avg_chl_interpolated_high_res = imputeTS::na.interpolation(avg_chl_interpolated, option="linear")) %>%
+    ungroup()
+
+######
+# Check interpolation quality on a random pixel
+set.seed(10)
+n <- sample(1:length(unique_valid_pixels), size = 1)
+#n <- 480 # Pixel 2624
+
+print(paste("Checking pixel: ", as.character(unique_valid_pixels[n]), sep=""))
+
+plot(1:328, climatology_high_res$avg_chl_interpolated_high_res[((n - 1) * 328 + 1):(n * 328)],
+     type="l",
+     col = "blue",
+     lwd = 2,
+     ylab = "avg_chl", xlab = "id_date",
+     main = paste("Actual vs interpolated avg_chl pixel: ", as.character(unique(climatology_high_res$id_pixel[((n - 1) * 328 + 1):(n * 328)])), sep = "") )
+points(1:41*8, climatology_high_res$avg_chl_interpolated[((n-1) * 328+1):(n*328)][!is.na(climatology_high_res$avg_chl_interpolated[((n-1) * 328+1):(n*328)])],
+      col = "red",
+      lty = 10,
+      lwd = 2)
+legend("topright", legend=c("Stine intp", "Actual"),
+       col=c("blue", "red"), lty=1:2, lwd=2, cex=0.8)
+
+
+
+
+
+
+
+# FROM HERE TROUBLES IN PARADISE
+
+
+
+
+#-------------------------------------------------------------------------------
+# Find zero points in new high res climatology
+
+# Calcola s, A, D, D_mav (moving average)
+climatology_high_res <- climatology_high_res %>%
+    # Already ungrouped.
+    group_by(id_pixel) %>%
+    # For each pixel, calculate: s = median + a % of median
+    #                           Anomalies = climatology - s
+    #                           C = cumulative sum of anomalies
+    #                           D = time derivative of cumulative sum of anomalies
+    #                           D_mav = moving average (or running average of derivative)
+    mutate(s = median(avg_chl_interpolated_high_res)*(1 + THRESHOLD_PERCENTAGE), # S: threshold median + 5%
+           A = avg_chl_interpolated_high_res - s, # anomalie
+           C = cumsum(A), # somma cumulata
+           ################################################
+           # NON VA DIVISA PER 8 QUI SICCOME è GIORNALIERA!!!!!!!!
+           ################################################
+           D = (C - dplyr::lag(C))/8, # derivata temporale
+           D_mav_high_res = TTR::runMean(D, RUNNING_AVERAGE_WINDOW)) %>% # Applico moving average alla derivata
+    # Remove grouping by pixel
+    ungroup()
+
+
+# MOVING AVERAGE OTTENUTA CALCOLANDO GLI INDICI SULLA CHL INTERPOLATA
+plot(1:328, climatology_high_res$D_mav_high_res[((n - 1) * 328 + 1):(n * 328)],
+     type="l",
+     col = "blue",
+     lwd = 2,
+     ylab = "D_mav", xlab = "id_date",
+     main = paste("Actual vs interpolated D_mav pixel: ", as.character(unique(climatology_high_res$id_pixel[((n - 1) * 328 + 1):(n * 328)])), sep = "") )
+# MOVING AVERAGE OTTENUTA SUI DATI REALI
+points(4:41*8, climatology_high_res$D_mav[((n-1) * 328+1):(n*328)][!is.na(climatology_high_res$D_mav[((n-1) * 328+1):(n*328)])],
+      col = "red",
+      lty = 10,
+      lwd = 2)
+#####################################################
+# NOTA DEL REDATTORE:
+# 
+# INTERPOLANDO MI DA ANCHE I DATI CHE NON ESISTONO IN QUELLI ATTUALI.. QUINDI DEVO SHIFTARE DI TOT PUNTI
+# ALTRIMENTI è TUTTO SHIFTATO A DX.
+# 
+# CON MAV WINDOW = 3 DEVO SHIFTARE DI 32 L'ID_DATE
+#####################################################
+
+# MOVING AVERAGE OTTENUTA INTERPOLANDO SU STINE
+lines(32:328, (climatology_high_res$D_mav_high_res_from_stine[((n - 1) * 328 + 1):(n * 328)])[32:328],
+      col = "green",
+      lwd = 2)
+
+abline(0, 0, lwd=2)
+
+legend("topright", legend=c("From intp chl", "Actual", "From intp mav"),
+       col=c("blue", "red", "green"), lty=c(1,10,1), lwd=2, cex=0.8)
+
+
+
+
+
+
+
+#### Poi trovare i punti di zero di nuovo... su cosa non si sa ancora.. se su d_mav oppure d_mav_high_res_from_stine
+
+
+####
+# Trovare I PUNTI DI ZERO SULLA MOVING AVERAGE INTERPOLATA, OSSIA SU D_mav_high_res_from_stine
+####
+
+
+
+
+
+# Find zero points of each climatology. SU D_MAV_HIGH_RES???
+zero_pts <- find_zero_points(climatology_high_res, "id_date_extended", D_mav_name = "D_mav_high_res_from_stine")
+
+# Find number of blooms
+n_blooms <- find_number_of_blooms(zero_pts)
+
+# L'intersezione con lo zero si trova indicando due punti quello prima e dopo l'intersezione.
+# -> N punti di zero = n_bloom * 4/2
+# -> Punti trovati = n_bloom * 4
+# -> -> Numero di bloom trovati = Punti trovati / 4
+
+# Barplot of frequency of number of blooms found
+table(n_blooms)
+barplot(table(n_blooms), main = "Frequency of number of blooms found")
+
+# The data is arranged in a dataframe
+zero_points_df_high_res <- build_table(zero_pts, n_blooms)
+
+rm(n_blooms, zero_pts)
+#-------------------------------------------------------------------------------
+# Flag pixels with 3 or more blooms
+
+zero_points_df_high_res <- zero_points_df_high_res %>%
+    mutate(flagged = n_blooms >= 3 ) %>%
+    arrange(id_pixel, id_date_zero_crossing)
+
