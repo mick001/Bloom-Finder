@@ -13,6 +13,7 @@ set.seed(332423)
 require(mice)         # 2.46.0
 require(qchlorophyll) # 2.1
 require(dplyr)        # 0.7.4
+require(scales)       # 0.5.0
 
 #-------------------------------------------------------------------------------
 # PARAMETERS
@@ -23,6 +24,10 @@ MAX_CONSECUTIVE_NA <- 2
 THRESHOLD_PERCENTAGE <- 0.05
 # Running average (or moving average) parameter
 RUNNING_AVERAGE_WINDOW <- 3
+# Climatology data should be squished into which percentile interval?
+PERCENTILE_SQUISHING_INTERVAL <- c(0.05, 0.95)
+# Type of mean to be used. Set to "geom" for geometric mean
+MEAN_FUNCTION <- "mean"
 
 #-------------------------------------------------------------------------------
 # Set paths
@@ -52,6 +57,21 @@ rm(nc_files_list, nc_files_path)
 
 # Load function to calculate consecutive NAs in climatology
 source(file.path(aux_functions_path, "consecutive_na_count.R"))
+
+# Set mean function to be used for calculating climatology
+if(MEAN_FUNCTION == "mean")
+{
+    MEAN_FUNCTION <- mean
+    print("Using arithmetic mean...")
+}else if(MEAN_FUNCTION == "geom")
+{
+    MEAN_FUNCTION <- function(x){ exp(mean(log(x))) }
+    print("Using geometric mean...")
+}else
+{
+    warning("Mean function specified is not correct... using arithmetic mean")
+    MEAN_FUNCTION <- mean
+}
 
 # Calcola la media per pixel per data (climatologia)
 climatology <- nc_dataframe %>%
@@ -109,6 +129,13 @@ climatology$avg_chl_interpolated <- imputed_df$avg_chl
 
 rm(imputed_df)
 #-------------------------------------------------------------------------------
+# Squish of climatology data
+
+climatology <- climatology %>%
+    mutate(avg_chl_interpolated = squish(avg_chl_interpolated, quantile(avg_chl_interpolated, PERCENTILE_SQUISHING_INTERVAL, na.rm=T)))
+
+rm(PERCENTILE_SQUISHING_INTERVAL)
+#-------------------------------------------------------------------------------
 # Ora in dataframe climatology:
 
 # - id_pixel
@@ -120,7 +147,7 @@ rm(imputed_df)
 #                               climatologia in quella data per quel pixel
 # - NA_in_climatology_per_pixel: numero di NA presenti in climatologia per quel pixel
 # - total_pixels_kept_percentage: percentuale di pixel mantenuti sul totale di pixel analizzati
-# - avg_chl_interpolated: climatologia interpolata con mice.
+# - avg_chl_interpolated: climatologia interpolata con mice e "squishata" nell'intervallo indicato.
 
 #-------------------------------------------------------------------------------
 # Calculate useful indeces over the interpolated climatology
@@ -143,15 +170,18 @@ climatology <- climatology %>%
     ungroup()
 
 #Curiosità guardiamo le serie storiche del pixel 1.
-pixel1 <- climatology %>% filter(id_pixel == 1730)
-plot(pixel1$id_date, pixel1$avg_chl, type="l")
-plot(pixel1$id_date, pixel1$avg_chl_interpolated, type="l")
-plot(pixel1$id_date, pixel1$A, type="l")
-plot(pixel1$id_date, pixel1$C, type="l")
-plot(pixel1$id_date, pixel1$D, type="l")
-plot(pixel1$id_date, pixel1$D_mav, type="l")
+# pixel1 <- climatology %>% filter(id_pixel == 1730)
+# plot(pixel1$id_date, pixel1$avg_chl, type="l")
+# plot(pixel1$id_date, pixel1$avg_chl_interpolated, type="l")
+# plot(pixel1$id_date, pixel1$A, type="l")
+# plot(pixel1$id_date, pixel1$C, type="l")
+# plot(pixel1$id_date, pixel1$D, type="l")
+# plot(pixel1$id_date, pixel1$D_mav, type="l")
 
-rm(pixel1)
+source(file.path(aux_functions_path, "plot_calculated_indeces.R"))
+
+plot_calculated_indeces(1730)
+
 #-------------------------------------------------------------------------------
 # Find zero points
 
@@ -205,7 +235,7 @@ unique_valid_pixels <- zero_points_df %>%
     pull()
 
 # New climatology (with higher time resolution)
-climatology_high_res <- data.frame(id_pixel = rep(as.numeric(unique_valid_pixels), each=328),
+climatology_high_res <- data.frame(id_pixel = rep(as.numeric(unique_valid_pixels), each = 328),
                        id_date_extended = rep(1:328, length(unique_valid_pixels))) %>%
     as_tibble() %>%
     arrange(id_pixel, id_date_extended)
