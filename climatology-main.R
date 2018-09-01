@@ -61,7 +61,7 @@ source(file.path(aux_functions_path, "consecutive_na_count.R"))
 # Set mean function to be used for calculating climatology
 if(MEAN_FUNCTION == "mean")
 {
-    MEAN_FUNCTION <- mean
+    MEAN_FUNCTION <- function(x){ mean(x, na.rm=T) }
     print("Using arithmetic mean...")
 }else if(MEAN_FUNCTION == "geom")
 {
@@ -70,7 +70,7 @@ if(MEAN_FUNCTION == "mean")
 }else
 {
     warning("Mean function specified is not correct... using arithmetic mean")
-    MEAN_FUNCTION <- mean
+    MEAN_FUNCTION <- function(x){ mean(x, na.rm=T) }
 }
 
 # Calcola la media per pixel per data (climatologia)
