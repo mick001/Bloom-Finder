@@ -8,8 +8,8 @@ set.seed(332423)
 #-------------------------------------------------------------------------------
 # Load required libraries
 
-# Libraries needed
-# TTR 0.23-3
+# TTR                 # 0.23-3
+# lazyeval            # 0.2.1
 require(mice)         # 2.46.0
 require(qchlorophyll) # 2.1
 require(dplyr)        # 0.7.4
@@ -65,7 +65,7 @@ if(MEAN_FUNCTION == "mean")
     print("Using arithmetic mean...")
 }else if(MEAN_FUNCTION == "geom")
 {
-    MEAN_FUNCTION <- function(x){ exp(mean(log(x))) }
+    MEAN_FUNCTION <- function(x){ exp(mean(log(x), na.rm = T)) }
     print("Using geometric mean...")
 }else
 {
@@ -79,8 +79,18 @@ climatology <- nc_dataframe %>%
     group_by(id_pixel, id_date) %>%
     # Calculate: climatology, i.e. average value for date for pixel (avg_chl)
     #           number of observations used in each date (n_observations_used_per_date)
-    summarise(avg_chl = mean(CHL1_mean, na.rm=T),
-              n_observations_used_per_date = sum(!is.na(CHL1_mean))) %>%
+    
+    ################################################################################
+    ################################################################################
+    #summarise(avg_chl = mean(CHL1_mean, na.rm=T),
+     #         n_observations_used_per_date = sum(!is.na(CHL1_mean))) %>%
+    summarise_(.dots = setNames(list(lazyeval::interp( ~ MEAN_FUNCTION(CHL1_mean)),
+                                     lazyeval::interp( ~ sum(!is.na(CHL1_mean))) ),
+                                c("avg_chl", "n_observations_used_per_date"))) %>%
+    
+    ################################################################################
+    ################################################################################
+    
     # Calculate, for each pixel: how many missing data in the climatology (NA_in_climatology_per_pixel) 
     #                           should the pixel be kept? (keep_pixel_NA_consecutive: TRUE keep, FALSE drop)
     mutate(NA_in_climatology_per_pixel = sum(is.na(avg_chl)),
