@@ -1,8 +1,8 @@
 #-------------------------------------------------------------------------------
 # Clean workspace
-rm(list=ls())
+rm(list = ls())
 
-# Set seed
+# Set seed for reproducibility purposes
 set.seed(332423)
 
 #-------------------------------------------------------------------------------
@@ -18,45 +18,45 @@ require(scales)       # 0.5.0
 #-------------------------------------------------------------------------------
 # PARAMETERS
 
-# Maximum number of allowed consecutive NAs. Mantiene solo i pixel con al più n NA consecutivi
+# Maximum number of allowed consecutive NAs in the climatology. Mantiene solo i pixel con al più n NA consecutivi
 MAX_CONSECUTIVE_NA <- 2
-# Threshold percentage needed to calculate s index: median(chl) * (1 + THRESHOLD_PERCENTAGE). Defaults at 5%
+# Threshold percentage needed to calculate s index = median(chl) * (1 + THRESHOLD_PERCENTAGE). Defaults at 5%
 THRESHOLD_PERCENTAGE <- 0.05
-# Running average (or moving average) parameter
+# Running average (or moving average) parameter. Number of observations to be used in the moving average.
 RUNNING_AVERAGE_WINDOW <- 3
-# Climatology data should be squished into which percentile interval?
+# Percentile interval into which climatology data needs to be squished.
 PERCENTILE_SQUISHING_INTERVAL <- c(0.05, 0.95)
-# Type of mean to be used. Set to "geom" for geometric mean
+# Type of average operation to be used. Set to "geom" for geometric mean.
 MEAN_FUNCTION <- "mean"
 
 #-------------------------------------------------------------------------------
 # Set paths
 
 # Path of .nc files
-#nc_files_path <- "/mnt/hgfs/SHARE_VM/christian_paper/DATA_TEST"
-nc_files_path <- "C:\\users\\michy\\desktop\\christian_paper\\DATA_TEST"
+#NC_FILES_PATH <- "/mnt/hgfs/SHARE_VM/christian_paper/DATA_TEST"
+NC_FILES_PATH <- "C:\\users\\michy\\desktop\\christian_paper\\DATA_TEST"
 # Auxiliary functions path
-aux_functions_path <- "C:\\users\\michy\\desktop\\christian_paper\\SCRIPT\\auxiliary_functions"
+AUX_FUNCTIONS_PATH <- "C:\\users\\michy\\desktop\\christian_paper\\SCRIPT\\auxiliary_functions"
+# Output directory
+OUTPUT_PATH <- "C:\\users\\michy\\desktop"
 
 #-------------------------------------------------------------------------------
 # Load data
 
 # Carico file .nc ed estraggo CHL1_mean
-nc_files_list <- load_all_as_list(path = nc_files_path, variables = c("CHL1_mean"))
+nc_files_list <- load_all_as_list(path = NC_FILES_PATH, variables = c("CHL1_mean"))
 # Unisco il tutto in un unico dataframe.
 nc_dataframe <- assign_id_and_melt(nc_files_list)
-# I dati caricati sono pronti per le analisi
-#View(nc_dataframe)
 
-rm(nc_files_list, nc_files_path)
+rm(nc_files_list, NC_FILES_PATH)
 #-------------------------------------------------------------------------------
-# Calculate:
+# Calculate on RAW chl data:
 #           1. Climatology.
 #           2. Required indeces.
 
 
 # Load function to calculate consecutive NAs in climatology
-source(file.path(aux_functions_path, "consecutive_na_count.R"))
+source(file.path(AUX_FUNCTIONS_PATH, "consecutive_na_count.R"))
 
 # Set mean function to be used for calculating climatology
 if(MEAN_FUNCTION == "mean")
@@ -73,23 +73,19 @@ if(MEAN_FUNCTION == "mean")
     MEAN_FUNCTION <- function(x){ mean(x, na.rm=T) }
 }
 
-# Calcola la media per pixel per data (climatologia)
+# Calcola la media specificata per pixel per data (climatologia)
 climatology <- nc_dataframe %>%
     # For each pixel, then for each date
     group_by(id_pixel, id_date) %>%
     # Calculate: climatology, i.e. average value for date for pixel (avg_chl)
     #           number of observations used in each date (n_observations_used_per_date)
     
-    ################################################################################
-    ################################################################################
     #summarise(avg_chl = mean(CHL1_mean, na.rm=T),
      #         n_observations_used_per_date = sum(!is.na(CHL1_mean))) %>%
     summarise_(.dots = setNames(list(lazyeval::interp( ~ MEAN_FUNCTION(CHL1_mean)),
                                      lazyeval::interp( ~ sum(!is.na(CHL1_mean))) ),
-                                c("avg_chl", "n_observations_used_per_date"))) %>%
-    
-    ################################################################################
-    ################################################################################
+                                c("avg_chl",
+                                  "n_observations_used_per_date"))) %>%
     
     # Calculate, for each pixel: how many missing data in the climatology (NA_in_climatology_per_pixel) 
     #                           should the pixel be kept? (keep_pixel_NA_consecutive: TRUE keep, FALSE drop)
@@ -113,12 +109,12 @@ climatology <- nc_dataframe %>%
 
 rm(pixel_consecutive_NA, MAX_CONSECUTIVE_NA)
 #-------------------------------------------------------------------------------
-# Add info about lon and lat
+# Add info on longitude and latitude (lon and lat)
 
 climatology <- nc_dataframe %>%
     select(lon, lat, id_pixel) %>%
     distinct() %>%
-    left_join(climatology, ., by="id_pixel")
+    left_join(climatology, ., by = "id_pixel")
 
 #-------------------------------------------------------------------------------
 # Interpolate missing data with mice
@@ -139,7 +135,7 @@ climatology$avg_chl_interpolated <- imputed_df$avg_chl
 
 rm(imputed_df)
 #-------------------------------------------------------------------------------
-# Squish of climatology data
+# Squish of climatology data in the selected percentile interval
 
 climatology <- climatology %>%
     mutate(avg_chl_interpolated = squish(avg_chl_interpolated, quantile(avg_chl_interpolated, PERCENTILE_SQUISHING_INTERVAL, na.rm=T)))
@@ -188,16 +184,16 @@ climatology <- climatology %>%
 # plot(pixel1$id_date, pixel1$D, type="l")
 # plot(pixel1$id_date, pixel1$D_mav, type="l")
 
-source(file.path(aux_functions_path, "plot_calculated_indeces.R"))
+source(file.path(AUX_FUNCTIONS_PATH, "plot_calculated_indeces.R"))
 
 plot_calculated_indeces(1730)
 
 #-------------------------------------------------------------------------------
 # Find zero points
 
-source(file.path(aux_functions_path, "find_zero_points.R"))
-source(file.path(aux_functions_path, "find_number_of_blooms.R"))
-source(file.path(aux_functions_path, "build_table_zero_points_1.R"))
+source(file.path(AUX_FUNCTIONS_PATH, "find_zero_points.R"))
+source(file.path(AUX_FUNCTIONS_PATH, "find_number_of_blooms.R"))
+source(file.path(AUX_FUNCTIONS_PATH, "build_table_zero_points_1.R"))
 
 # Find zero points of each climatology
 zero_pts <- find_zero_points(climatology)
