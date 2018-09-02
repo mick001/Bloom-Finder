@@ -216,10 +216,10 @@ source(file.path(AUX_FUNCTIONS_PATH, "find_number_of_blooms.R"))
 source(file.path(AUX_FUNCTIONS_PATH, "build_table_zero_points_1.R"))
 
 # Find zero points of each climatology
-zero_pts <- find_zero_points(climatology)
+zero_pts_raw <- find_zero_points(climatology)
 
 # Find number of blooms
-n_blooms <- find_number_of_blooms(zero_pts)
+n_blooms_raw <- find_number_of_blooms(zero_pts_raw)
 
 # L'intersezione con lo zero si trova indicando due punti quello prima e dopo l'intersezione.
 # -> N punti di zero = n_bloom * 4/2
@@ -227,16 +227,18 @@ n_blooms <- find_number_of_blooms(zero_pts)
 # -> -> Numero di bloom trovati = Punti trovati / 4
 
 # Barplot of frequency of number of blooms found
-table(n_blooms)
-barplot(table(n_blooms), main = "Frequency of number of blooms found", col = "blue")
+table(n_blooms_raw)
+barplot(table(n_blooms_raw),
+        main = "Frequency of number of blooms found",
+        col = "blue")
 
 # The calculated data is arranged in a dataframe
-zero_points_df <- build_table(zero_pts, n_blooms) %>%
+zero_points_df <- build_table(zero_pts_raw, n_blooms_raw) %>%
     # Flag pixels with 3 or more blooms
     mutate(flagged = n_blooms >= 3 ) %>%
     arrange(id_pixel, id_date_zero_crossing)
 
-rm(n_blooms, zero_pts)
+#rm(n_blooms, zero_pts)
 #-------------------------------------------------------------------------------
 # Content of zero_points_df:
 
@@ -248,6 +250,10 @@ rm(n_blooms, zero_pts)
 #-------------------------------------------------------------------------------
 # Increase resolution of chl from one observation every 8 days to 1 observation per day
 # The increase in resolution is obtained by interpolating with Stineman algorithm
+
+#############
+# Resolution increase is done only for pixels with less than 3 blooms!!!
+#############
 
 print("Interpolating data to increase time resolution from 8 days to 1 day...")
 
@@ -412,6 +418,6 @@ zero_points_df_high_res <- build_table(zero_pts, n_blooms) %>%
     # Flag pixels with 3 or more blooms
     arrange(id_pixel, id_date_zero_crossing)
 
-rm(n_blooms, zero_pts)
+#rm(n_blooms, zero_pts)
 #-------------------------------------------------------------------------------
 
