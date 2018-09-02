@@ -235,7 +235,8 @@ barplot(table(n_blooms_raw),
 # The calculated data is arranged in a dataframe
 zero_points_df <- build_table(zero_pts_raw, n_blooms_raw) %>%
     # Flag pixels with 3 or more blooms
-    mutate(flagged = n_blooms >= 3 ) %>%
+    mutate(flagged = n_blooms >= 3,
+           id_week_zero_crossing = ceiling(id_date_zero_crossing / 7)) %>%
     arrange(id_pixel, id_date_zero_crossing)
 
 #rm(n_blooms, zero_pts)
@@ -414,7 +415,9 @@ barplot(table(n_blooms), main = "Frequency of number of blooms found")
 
 # The data is arranged in a dataframe
 zero_points_df_high_res <- build_table(zero_pts, n_blooms) %>%
-    mutate(flagged = n_blooms >= 3 ) %>%
+    mutate(flagged = n_blooms >= 3,
+           # Convert id_date to week
+           id_week_zero_crossing = ceiling(id_date_zero_crossing / 7)) %>%
     # Flag pixels with 3 or more blooms
     arrange(id_pixel, id_date_zero_crossing)
 

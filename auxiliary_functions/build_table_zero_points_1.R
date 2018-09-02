@@ -32,5 +32,8 @@ build_table <- function(zero_pts, n_blooms)
         df_out <- rbind(df_out, df)
     }
     
+    # Convert to tibble
+    df_out <- df_out %>% as_tibble()
+    
     return(df_out)
 }
