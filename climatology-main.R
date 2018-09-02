@@ -280,32 +280,39 @@ climatology_high_res <- climatology_high_res %>%
            D_mav_high_res_from_stine = imputeTS::na.interpolation(D_mav, option="stine")) %>%
     ungroup()
 
+#-------------------------------------------------------------------------------
 # Check interpolation quality on a random pixel
-set.seed(10)
-n <- sample(1:length(unique_valid_pixels), size = 1)
-#n <- 480 # Pixel 2624
 
-par(mfrow = c(1, 2))
+# set.seed(10)
+# n <- sample(1:length(unique_valid_pixels), size = 1)
+# #n <- 480 # Pixel 2624
 
-print(paste("Checking pixel: ", as.character(unique_valid_pixels[n]), sep=""))
-# High resolution avg_chl, points and lines
-plot(1:328, climatology_high_res$avg_chl_interpolated_high_res[((n - 1) * 328 + 1):(n * 328)],
-     col = "blue",
-     pch = 20,
-     ylab = "avg_chl", xlab = "id_date",
-     main = paste("Actual vs interpolated avg_chl pixel: ", as.character(unique(climatology_high_res$id_pixel[((n - 1) * 328 + 1):(n * 328)])), sep = "") )
-lines(1:328, climatology_high_res$avg_chl_interpolated_high_res[((n - 1) * 328 + 1):(n * 328)],
-     type = "l",
-     col = "blue",
-     lwd = 2)
-# Low resolution avg_chl
-points(1:41*8, climatology_high_res$avg_chl_interpolated[((n-1) * 328+1):(n*328)][!is.na(climatology_high_res$avg_chl_interpolated[((n-1) * 328+1):(n*328)])],
-      col = "red",
-      lty = 10,
-      lwd = 2)
-# Legend
-legend("topright", legend = c("Stine intp", "Original data"),
-       col=c("blue", "red"), pch = c(20, 20), cex = 0.8)
+source(file.path(AUX_FUNCTIONS_PATH, "actual_vs_interpolated_plots.R"))
+compare_data_interpolation(2624)
+
+#-------------------------------------------------------------------------------
+
+# par(mfrow = c(1, 2))
+# 
+# print(paste("Checking pixel: ", as.character(unique_valid_pixels[n]), sep=""))
+# # High resolution avg_chl, points and lines
+# plot(1:328, climatology_high_res$avg_chl_interpolated_high_res[((n - 1) * 328 + 1):(n * 328)],
+#      col = "blue",
+#      pch = 20,
+#      ylab = "avg_chl", xlab = "id_date",
+#      main = paste("Actual vs interpolated avg_chl pixel: ", as.character(unique(climatology_high_res$id_pixel[((n - 1) * 328 + 1):(n * 328)])), sep = "") )
+# lines(1:328, climatology_high_res$avg_chl_interpolated_high_res[((n - 1) * 328 + 1):(n * 328)],
+#      type = "l",
+#      col = "blue",
+#      lwd = 2)
+# # Low resolution avg_chl
+# points(1:41*8, climatology_high_res$avg_chl_interpolated[((n-1) * 328+1):(n*328)][!is.na(climatology_high_res$avg_chl_interpolated[((n-1) * 328+1):(n*328)])],
+#       col = "red",
+#       lty = 10,
+#       lwd = 2)
+# # Legend
+# legend("topright", legend = c("Stine intp", "Original data"),
+#        col=c("blue", "red"), pch = c(20, 20), cex = 0.8)
 
 #-------------------------------------------------------------------------------
 # Find zero points in new high res climatology
@@ -362,24 +369,24 @@ legend("topright", legend = c("Stine intp", "Original data"),
 # CON MAV WINDOW = 3 DEVO SHIFTARE DI 32 L'ID_DATE
 #####################################################
 
-# Moving average obtained from original moving average by interpolating with Stineman algorithm
-plot(32:328, (climatology_high_res$D_mav_high_res_from_stine[((n - 1) * 328 + 1):(n * 328)])[32:328],
-     col = "blue",
-     pch = 20,
-     ylab = "D_mav", xlab = "id_date",
-     main = paste("Actual vs interpolated D_mav pixel: ", as.character(unique(climatology_high_res$id_pixel[((n - 1) * 328 + 1):(n * 328)])), sep = "") )
-lines(32:328, (climatology_high_res$D_mav_high_res_from_stine[((n - 1) * 328 + 1):(n * 328)])[32:328],
-     col = "blue",
-     lwd = 2)
-# Actual moving average
-points(4:41*8, climatology_high_res$D_mav[((n-1) * 328+1):(n*328)][!is.na(climatology_high_res$D_mav[((n-1) * 328+1):(n*328)])],
-     col = "red",
-     pch = 20)
-# Zero line
-abline(0, 0, lwd=2)
-# Legend
-legend("topright", legend = c("From intp chl", "Actual"),
-       col = c("blue", "red"), pch = c(20, 20), cex = 0.8)
+# # Moving average obtained from original moving average by interpolating with Stineman algorithm
+# plot(32:328, (climatology_high_res$D_mav_high_res_from_stine[((n - 1) * 328 + 1):(n * 328)])[32:328],
+#      col = "blue",
+#      pch = 20,
+#      ylab = "D_mav", xlab = "id_date",
+#      main = paste("Actual vs interpolated D_mav pixel: ", as.character(unique(climatology_high_res$id_pixel[((n - 1) * 328 + 1):(n * 328)])), sep = "") )
+# lines(32:328, (climatology_high_res$D_mav_high_res_from_stine[((n - 1) * 328 + 1):(n * 328)])[32:328],
+#      col = "blue",
+#      lwd = 2)
+# # Actual moving average
+# points(4:41*8, climatology_high_res$D_mav[((n-1) * 328+1):(n*328)][!is.na(climatology_high_res$D_mav[((n-1) * 328+1):(n*328)])],
+#      col = "red",
+#      pch = 20)
+# # Zero line
+# abline(0, 0, lwd=2)
+# # Legend
+# legend("topright", legend = c("From intp chl", "Actual"),
+#        col = c("blue", "red"), pch = c(20, 20), cex = 0.8)
 
 #-------------------------------------------------------------------------------
 # Trovare I PUNTI DI ZERO SULLA MOVING AVERAGE INTERPOLATA, OSSIA SU D_mav_high_res_from_stine
@@ -400,13 +407,11 @@ table(n_blooms)
 barplot(table(n_blooms), main = "Frequency of number of blooms found")
 
 # The data is arranged in a dataframe
-zero_points_df_high_res <- build_table(zero_pts, n_blooms)
+zero_points_df_high_res <- build_table(zero_pts, n_blooms) %>%
+    mutate(flagged = n_blooms >= 3 ) %>%
+    # Flag pixels with 3 or more blooms
+    arrange(id_pixel, id_date_zero_crossing)
 
 rm(n_blooms, zero_pts)
 #-------------------------------------------------------------------------------
-# Flag pixels with 3 or more blooms
-
-zero_points_df_high_res <- zero_points_df_high_res %>%
-    mutate(flagged = n_blooms >= 3 ) %>%
-    arrange(id_pixel, id_date_zero_crossing)
 

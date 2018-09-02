@@ -9,12 +9,14 @@
 #' - Derivative of cumulative sum of anomalies
 #' - Moving average of derivative of cumulative sum of anomalies
 #' 
-#' @param id_plixel_to_plot vector to be checked for consecutive missing data
+#' @param id_plixel_to_plot id of pixel to be plotted
 #' @return void
 #' @example plot_calculated_indeces(1729)
 #' 
 plot_calculated_indeces <- function(id_pixel_to_plot)
 {
+    print(paste("Plotting data for id_pixel: ", id_pixel_to_plot, sep = ""))
+    
     # Set plot device, 2 rows and 3 columns
     par(mfrow = c(2,3))
     # Get pixel data
