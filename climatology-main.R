@@ -10,6 +10,7 @@ set.seed(332423)
 
 # TTR                 # 0.23-3
 # lazyeval            # 0.2.1
+# log4r
 require(mice)         # 2.46.0
 require(qchlorophyll) # 2.1
 require(dplyr)        # 0.7.4
@@ -41,7 +42,15 @@ AUX_FUNCTIONS_PATH <- "C:\\users\\michy\\desktop\\christian_paper\\SCRIPT\\auxil
 OUTPUT_PATH <- "C:\\users\\michy\\desktop"
 
 #-------------------------------------------------------------------------------
+# Setup of logger
+
+logger <- log4r::create.logger(logfile = file.path(OUTPUT_PATH, "log_climatology_main.log"),
+                               level = "INFO")
+
+#-------------------------------------------------------------------------------
 # Load data
+
+print("Starting to load data...")
 
 # Carico file .nc ed estraggo CHL1_mean
 nc_files_list <- load_all_as_list(path = NC_FILES_PATH, variables = c("CHL1_mean"))
@@ -50,10 +59,12 @@ nc_dataframe <- assign_id_and_melt(nc_files_list)
 
 rm(nc_files_list, NC_FILES_PATH)
 #-------------------------------------------------------------------------------
-# Calculate on RAW chl data:
-#           1. Climatology.
-#           2. Required indeces.
+# Calculate on RAW chl data the climatology
 
+print("Calculating climatology...")
+
+# Pixels used as input in the analysis
+pixels_IN <- length(unique(nc_dataframe$id_pixel))
 
 # Load function to calculate consecutive NAs in climatology
 source(file.path(AUX_FUNCTIONS_PATH, "consecutive_na_count.R"))
@@ -63,14 +74,17 @@ if(MEAN_FUNCTION == "mean")
 {
     MEAN_FUNCTION <- function(x){ mean(x, na.rm=T) }
     print("Using arithmetic mean...")
+    log4r::info(logger, "Using arithmetic mean for climatology calculation.")
 }else if(MEAN_FUNCTION == "geom")
 {
     MEAN_FUNCTION <- function(x){ exp(mean(log(x), na.rm = T)) }
     print("Using geometric mean...")
+    log4r::info(logger, "Using geometric mean for climatology calculation.")
 }else
 {
-    warning("Mean function specified is not correct... using arithmetic mean")
     MEAN_FUNCTION <- function(x){ mean(x, na.rm=T) }
+    warning("Mean function specified is not correct... using arithmetic mean")
+    log4r::info(logger, "Using arithmetic mean for climatology calculation.")
 }
 
 # Calcola la media specificata per pixel per data (climatologia)
@@ -94,22 +108,27 @@ climatology <- nc_dataframe %>%
            keep_pixel_NA_consecutive = pixel_consecutive_NA(avg_chl, n = MAX_CONSECUTIVE_NA)) %>%
     # Remove grouping by pixel
     ungroup() %>%
-    # Calculate initial number of pixels input in the analysis (pixel_in_analysis)
-    mutate(pixels_in_analysis = n_distinct(id_pixel)) %>%
     # Keep only pixels with less than n consecutive NAs
     filter(keep_pixel_NA_consecutive == TRUE) %>%
-    # Calculate: final number of pixels to be used for the analysis (pixels_out_analysis)
-    #           percentage of pixels kept (pixels_kept_percentage)
-    mutate(pixels_out_analysis = n_distinct(id_pixel),
-           total_pixels_kept_percentage = pixels_out_analysis / pixels_in_analysis * 100) %>%
     # Remove unused columns
-    select(-keep_pixel_NA_consecutive,
-           -pixels_in_analysis,
-           -pixels_out_analysis)
+    select(-keep_pixel_NA_consecutive)
 
-rm(pixel_consecutive_NA, MAX_CONSECUTIVE_NA)
+# Pixels kept for the analysis
+pixels_kept <- length(unique(climatology$id_pixel))
+
+# Percentage of pixels kept for the analysis on the total of pixels used as input
+print(paste("Percentage of pixels kept: ", pixels_kept/pixels_IN * 100, sep = ""))
+
+# Log the information
+log4r::info(logger, paste("Pixels used as input: ", pixels_IN, sep = ""))
+log4r::info(logger, paste("Pixels used for analysis: ", pixels_kept, sep = ""))
+log4r::info(logger, paste("Percentage of pixels used for analysis over input: ", pixels_kept/pixels_IN * 100, sep = ""))
+
+rm(pixel_consecutive_NA, MAX_CONSECUTIVE_NA, pixels_IN, pixels_kept)
 #-------------------------------------------------------------------------------
 # Add info on longitude and latitude (lon and lat)
+
+print("Adding info on longitude and latitude...")
 
 climatology <- nc_dataframe %>%
     select(lon, lat, id_pixel) %>%
@@ -117,7 +136,9 @@ climatology <- nc_dataframe %>%
     left_join(climatology, ., by = "id_pixel")
 
 #-------------------------------------------------------------------------------
-# Interpolate missing data with mice
+# Interpolate missing data with MICE
+
+print("Interpolating climatology with MICE...")
 
 # Obtain the mice object by interpolating with mice
 imputed_df <- climatology %>%
@@ -137,8 +158,11 @@ rm(imputed_df)
 #-------------------------------------------------------------------------------
 # Squish of climatology data in the selected percentile interval
 
+print("Squishing climatology in the selected percentile interval...")
+
 climatology <- climatology %>%
-    mutate(avg_chl_interpolated = squish(avg_chl_interpolated, quantile(avg_chl_interpolated, PERCENTILE_SQUISHING_INTERVAL, na.rm=T)))
+    mutate(avg_chl_interpolated = squish(avg_chl_interpolated,
+                                         quantile(avg_chl_interpolated, PERCENTILE_SQUISHING_INTERVAL, na.rm = T)))
 
 rm(PERCENTILE_SQUISHING_INTERVAL)
 #-------------------------------------------------------------------------------
@@ -152,11 +176,12 @@ rm(PERCENTILE_SQUISHING_INTERVAL)
 # - n_observations_used_per_date: numero di osservazioni utilizzate per calcolare la
 #                               climatologia in quella data per quel pixel
 # - NA_in_climatology_per_pixel: numero di NA presenti in climatologia per quel pixel
-# - total_pixels_kept_percentage: percentuale di pixel mantenuti sul totale di pixel analizzati
 # - avg_chl_interpolated: climatologia interpolata con mice e "squishata" nell'intervallo indicato.
 
 #-------------------------------------------------------------------------------
-# Calculate useful indeces over the interpolated climatology
+# Calculate useful indeces over the interpolated climatology (avg_chl_interpolated)
+
+print("Calculating useful indeces...")
 
 # Calcola s, A, D, D_mav (moving average)
 climatology <- climatology %>%
@@ -175,22 +200,17 @@ climatology <- climatology %>%
     # Remove grouping by pixel
     ungroup()
 
-#Curiosità guardiamo le serie storiche del pixel 1.
-# pixel1 <- climatology %>% filter(id_pixel == 1730)
-# plot(pixel1$id_date, pixel1$avg_chl, type="l")
-# plot(pixel1$id_date, pixel1$avg_chl_interpolated, type="l")
-# plot(pixel1$id_date, pixel1$A, type="l")
-# plot(pixel1$id_date, pixel1$C, type="l")
-# plot(pixel1$id_date, pixel1$D, type="l")
-# plot(pixel1$id_date, pixel1$D_mav, type="l")
-
 source(file.path(AUX_FUNCTIONS_PATH, "plot_calculated_indeces.R"))
 
+# Plot pixel 1730 indeces
 plot_calculated_indeces(1730)
 
 #-------------------------------------------------------------------------------
 # Find zero points
 
+print("Finding zero points and blooms...")
+
+# Load useful functions
 source(file.path(AUX_FUNCTIONS_PATH, "find_zero_points.R"))
 source(file.path(AUX_FUNCTIONS_PATH, "find_number_of_blooms.R"))
 source(file.path(AUX_FUNCTIONS_PATH, "build_table_zero_points_1.R"))
@@ -208,19 +228,15 @@ n_blooms <- find_number_of_blooms(zero_pts)
 
 # Barplot of frequency of number of blooms found
 table(n_blooms)
-barplot(table(n_blooms), main = "Frequency of number of blooms found")
+barplot(table(n_blooms), main = "Frequency of number of blooms found", col = "blue")
 
-# The data is arranged in a dataframe
-zero_points_df <- build_table(zero_pts, n_blooms)
-
-rm(n_blooms, zero_pts)
-#-------------------------------------------------------------------------------
-# Flag pixels with 3 or more blooms
-
-zero_points_df <- zero_points_df %>%
+# The calculated data is arranged in a dataframe
+zero_points_df <- build_table(zero_pts, n_blooms) %>%
+    # Flag pixels with 3 or more blooms
     mutate(flagged = n_blooms >= 3 ) %>%
     arrange(id_pixel, id_date_zero_crossing)
 
+rm(n_blooms, zero_pts)
 #-------------------------------------------------------------------------------
 # Content of zero_points_df:
 
@@ -231,7 +247,9 @@ zero_points_df <- zero_points_df %>%
 
 #-------------------------------------------------------------------------------
 # Increase resolution of chl from one observation every 8 days to 1 observation per day
-# The increase in resolution is obtained by interpolating with splines
+# The increase in resolution is obtained by interpolating with Stineman algorithm
+
+print("Interpolating data to increase time resolution from 8 days to 1 day...")
 
 # Extract list of valid pixels (i.e. pixels with less than 3 blooms)
 unique_valid_pixels <- zero_points_df %>%
@@ -240,20 +258,20 @@ unique_valid_pixels <- zero_points_df %>%
     distinct() %>%
     pull()
 
-# New climatology (with higher time resolution)
+# New climatology dataframe with new time axis (with increased time resolution)
 climatology_high_res <- data.frame(id_pixel = rep(as.numeric(unique_valid_pixels), each = 328),
                        id_date_extended = rep(1:328, length(unique_valid_pixels))) %>%
     as_tibble() %>%
     arrange(id_pixel, id_date_extended)
 
-# Add known chl values to new climatology
+# Add known chl values to new climatology time axis
 climatology_high_res <- climatology %>%
     select(id_pixel,
            id_date,
            avg_chl_interpolated,
            D_mav) %>%
     filter(id_pixel %in% unique_valid_pixels) %>%
-    left_join(climatology_high_res, ., by = c("id_pixel", "id_date_extended"="id_date"))
+    left_join(climatology_high_res, ., by = c("id_pixel", "id_date_extended" = "id_date"))
 
 # Interpolate using splines (by pixel)
 climatology_high_res <- climatology_high_res %>%
