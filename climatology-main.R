@@ -278,78 +278,81 @@ climatology_high_res <- climatology_high_res %>%
     group_by(id_pixel) %>%
     mutate(avg_chl_interpolated_high_res = imputeTS::na.interpolation(avg_chl_interpolated, option="stine"),
            D_mav_high_res_from_stine = imputeTS::na.interpolation(D_mav, option="stine")) %>%
-    #mutate(avg_chl_interpolated_high_res = imputeTS::na.interpolation(avg_chl_interpolated, option="spline")) %>%
-    #mutate(avg_chl_interpolated_high_res = imputeTS::na.interpolation(avg_chl_interpolated, option="linear")) %>%
     ungroup()
 
-######
 # Check interpolation quality on a random pixel
 set.seed(10)
 n <- sample(1:length(unique_valid_pixels), size = 1)
 #n <- 480 # Pixel 2624
 
-print(paste("Checking pixel: ", as.character(unique_valid_pixels[n]), sep=""))
+par(mfrow = c(1, 2))
 
+print(paste("Checking pixel: ", as.character(unique_valid_pixels[n]), sep=""))
+# High resolution avg_chl, points and lines
 plot(1:328, climatology_high_res$avg_chl_interpolated_high_res[((n - 1) * 328 + 1):(n * 328)],
-     type="l",
      col = "blue",
-     lwd = 2,
+     pch = 20,
      ylab = "avg_chl", xlab = "id_date",
      main = paste("Actual vs interpolated avg_chl pixel: ", as.character(unique(climatology_high_res$id_pixel[((n - 1) * 328 + 1):(n * 328)])), sep = "") )
+lines(1:328, climatology_high_res$avg_chl_interpolated_high_res[((n - 1) * 328 + 1):(n * 328)],
+     type = "l",
+     col = "blue",
+     lwd = 2)
+# Low resolution avg_chl
 points(1:41*8, climatology_high_res$avg_chl_interpolated[((n-1) * 328+1):(n*328)][!is.na(climatology_high_res$avg_chl_interpolated[((n-1) * 328+1):(n*328)])],
       col = "red",
       lty = 10,
       lwd = 2)
-legend("topright", legend=c("Stine intp", "Actual"),
-       col=c("blue", "red"), lty=1:2, lwd=2, cex=0.8)
-
-
-
-
-
-
-
-# FROM HERE TROUBLES IN PARADISE
-
-
-
+# Legend
+legend("topright", legend = c("Stine intp", "Original data"),
+       col=c("blue", "red"), pch = c(20, 20), cex = 0.8)
 
 #-------------------------------------------------------------------------------
 # Find zero points in new high res climatology
 
-# Calcola s, A, D, D_mav (moving average)
-climatology_high_res <- climatology_high_res %>%
-    # Already ungrouped.
-    group_by(id_pixel) %>%
-    # For each pixel, calculate: s = median + a % of median
-    #                           Anomalies = climatology - s
-    #                           C = cumulative sum of anomalies
-    #                           D = time derivative of cumulative sum of anomalies
-    #                           D_mav = moving average (or running average of derivative)
-    mutate(s = median(avg_chl_interpolated_high_res)*(1 + THRESHOLD_PERCENTAGE), # S: threshold median + 5%
-           A = avg_chl_interpolated_high_res - s, # anomalie
-           C = cumsum(A), # somma cumulata
-           ################################################
-           # NON VA DIVISA PER 8 QUI SICCOME è GIORNALIERA!!!!!!!!
-           ################################################
-           D = (C - dplyr::lag(C))/8, # derivata temporale
-           D_mav_high_res = TTR::runMean(D, RUNNING_AVERAGE_WINDOW)) %>% # Applico moving average alla derivata
-    # Remove grouping by pixel
-    ungroup()
+# # Calcola s, A, D, D_mav (moving average)
+# climatology_high_res <- climatology_high_res %>%
+#     # Already ungrouped.
+#     group_by(id_pixel) %>%
+#     # For each pixel, calculate: s = median + a % of median
+#     #                           Anomalies = climatology - s
+#     #                           C = cumulative sum of anomalies
+#     #                           D = time derivative of cumulative sum of anomalies
+#     #                           D_mav = moving average (or running average of derivative)
+#     mutate(s = median(avg_chl_interpolated_high_res)*(1 + THRESHOLD_PERCENTAGE), # S: threshold median + 5%
+#            A = avg_chl_interpolated_high_res - s, # anomalie
+#            C = cumsum(A), # somma cumulata
+#            ################################################
+#            # NON VA DIVISA PER 8 QUI SICCOME è GIORNALIERA!!!!!!!!
+#            ################################################
+#            D = (C - dplyr::lag(C))/8, # derivata temporale
+#            D_mav_high_res = TTR::runMean(D, RUNNING_AVERAGE_WINDOW)) %>% # Applico moving average alla derivata
+#     # Remove grouping by pixel
+#     ungroup()
 
+# # MOVING AVERAGE OTTENUTA CALCOLANDO GLI INDICI SULLA CHL INTERPOLATA
+# plot(1:328, climatology_high_res$D_mav_high_res[((n - 1) * 328 + 1):(n * 328)],
+#      type="l",
+#      col = "blue",
+#      lwd = 2,
+#      ylab = "D_mav", xlab = "id_date",
+#      main = paste("Actual vs interpolated D_mav pixel: ", as.character(unique(climatology_high_res$id_pixel[((n - 1) * 328 + 1):(n * 328)])), sep = "") )
+# # MOVING AVERAGE OTTENUTA SUI DATI REALI
+# points(4:41*8, climatology_high_res$D_mav[((n-1) * 328+1):(n*328)][!is.na(climatology_high_res$D_mav[((n-1) * 328+1):(n*328)])],
+#        col = "red",
+#        lty = 10,
+#        lwd = 2)
 
-# MOVING AVERAGE OTTENUTA CALCOLANDO GLI INDICI SULLA CHL INTERPOLATA
-plot(1:328, climatology_high_res$D_mav_high_res[((n - 1) * 328 + 1):(n * 328)],
-     type="l",
-     col = "blue",
-     lwd = 2,
-     ylab = "D_mav", xlab = "id_date",
-     main = paste("Actual vs interpolated D_mav pixel: ", as.character(unique(climatology_high_res$id_pixel[((n - 1) * 328 + 1):(n * 328)])), sep = "") )
-# MOVING AVERAGE OTTENUTA SUI DATI REALI
-points(4:41*8, climatology_high_res$D_mav[((n-1) * 328+1):(n*328)][!is.na(climatology_high_res$D_mav[((n-1) * 328+1):(n*328)])],
-      col = "red",
-      lty = 10,
-      lwd = 2)
+# # MOVING AVERAGE OTTENUTA INTERPOLANDO SU STINE
+# lines(32:328, (climatology_high_res$D_mav_high_res_from_stine[((n - 1) * 328 + 1):(n * 328)])[32:328],
+#       col = "green",
+#       lwd = 2)
+# 
+# abline(0, 0, lwd=2)
+# 
+# legend("topright", legend=c("From intp chl", "Actual", "From intp mav"),
+#        col=c("blue", "red", "green"), lty=c(1,10,1), lwd=2, cex=0.8)
+
 #####################################################
 # NOTA DEL REDATTORE:
 # 
@@ -359,32 +362,27 @@ points(4:41*8, climatology_high_res$D_mav[((n-1) * 328+1):(n*328)][!is.na(climat
 # CON MAV WINDOW = 3 DEVO SHIFTARE DI 32 L'ID_DATE
 #####################################################
 
-# MOVING AVERAGE OTTENUTA INTERPOLANDO SU STINE
+# Moving average obtained from original moving average by interpolating with Stineman algorithm
+plot(32:328, (climatology_high_res$D_mav_high_res_from_stine[((n - 1) * 328 + 1):(n * 328)])[32:328],
+     col = "blue",
+     pch = 20,
+     ylab = "D_mav", xlab = "id_date",
+     main = paste("Actual vs interpolated D_mav pixel: ", as.character(unique(climatology_high_res$id_pixel[((n - 1) * 328 + 1):(n * 328)])), sep = "") )
 lines(32:328, (climatology_high_res$D_mav_high_res_from_stine[((n - 1) * 328 + 1):(n * 328)])[32:328],
-      col = "green",
-      lwd = 2)
-
+     col = "blue",
+     lwd = 2)
+# Actual moving average
+points(4:41*8, climatology_high_res$D_mav[((n-1) * 328+1):(n*328)][!is.na(climatology_high_res$D_mav[((n-1) * 328+1):(n*328)])],
+     col = "red",
+     pch = 20)
+# Zero line
 abline(0, 0, lwd=2)
+# Legend
+legend("topright", legend = c("From intp chl", "Actual"),
+       col = c("blue", "red"), pch = c(20, 20), cex = 0.8)
 
-legend("topright", legend=c("From intp chl", "Actual", "From intp mav"),
-       col=c("blue", "red", "green"), lty=c(1,10,1), lwd=2, cex=0.8)
-
-
-
-
-
-
-
-#### Poi trovare i punti di zero di nuovo... su cosa non si sa ancora.. se su d_mav oppure d_mav_high_res_from_stine
-
-
-####
+#-------------------------------------------------------------------------------
 # Trovare I PUNTI DI ZERO SULLA MOVING AVERAGE INTERPOLATA, OSSIA SU D_mav_high_res_from_stine
-####
-
-
-
-
 
 # Find zero points of each climatology. SU D_MAV_HIGH_RES???
 zero_pts <- find_zero_points(climatology_high_res, "id_date_extended", D_mav_name = "D_mav_high_res_from_stine")
