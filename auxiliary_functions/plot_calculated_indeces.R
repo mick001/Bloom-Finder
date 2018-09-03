@@ -41,6 +41,7 @@ plot_calculated_indeces <- function(id_pixel_to_plot)
     
     plot(pixel$id_date, pixel$D_mav, type="p", pch = 18, col = "red", xlab = "id_date", ylab = "Moving average", main = "Derivative with moving average")
     lines(pixel$id_date, pixel$D_mav, lwd = 2, col = "blue")
+    abline(0, 0, lwd=2)
     
     # Restore plot device
     par(mfrow = c(1, 1))

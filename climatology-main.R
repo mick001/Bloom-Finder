@@ -8,13 +8,13 @@ set.seed(332423)
 #-------------------------------------------------------------------------------
 # Load required libraries
 
-# TTR                 # 0.23-3
-# lazyeval            # 0.2.1
-# log4r
 require(mice)         # 2.46.0
 require(qchlorophyll) # 2.1
 require(dplyr)        # 0.7.4
 require(scales)       # 0.5.0
+# TTR                 # 0.23-3
+# lazyeval            # 0.2.1
+# log4r               # 0.2
 
 #-------------------------------------------------------------------------------
 # PARAMETERS
@@ -29,6 +29,8 @@ RUNNING_AVERAGE_WINDOW <- 3
 PERCENTILE_SQUISHING_INTERVAL <- c(0.05, 0.95)
 # Type of average operation to be used. Set to "geom" for geometric mean.
 MEAN_FUNCTION <- "mean"
+# Minimum duration for bloom
+MINIMUM_BLOOM_DURATION_DAYS <- 16
 
 #-------------------------------------------------------------------------------
 # Set paths
@@ -135,26 +137,37 @@ climatology <- nc_dataframe %>%
     distinct() %>%
     left_join(climatology, ., by = "id_pixel")
 
+# Keep only a dataframe of unique pixels
+nc_dataframe <- nc_dataframe %>%
+    select(id_pixel, lon, lat) %>%
+    distinct()
+
 #-------------------------------------------------------------------------------
-# Interpolate missing data with MICE
+# Imputation of missing data using Kalman smoothing
 
-print("Interpolating climatology with MICE...")
+# print("Interpolating climatology with MICE...")
+# 
+# # Obtain the mice object by interpolating with mice
+# imputed_df <- climatology %>%
+#     select(avg_chl, lon, lat) %>%
+#     mice(method = "pmm", m = 1) # m = 1 for fast testing: default is 5
+# 
+# # Show density plot of imputed vs actual data
+# densityplot(imputed_df, main = "Density of imputed data vs actual data")
+# 
+# # Complete imputed df # 1
+# imputed_df <- complete(imputed_df, 1)
+# 
+# # Add interpolated chl to climatology
+# climatology$avg_chl_interpolated <- imputed_df$avg_chl
+# 
+# rm(imputed_df)
 
-# Obtain the mice object by interpolating with mice
-imputed_df <- climatology %>%
-    select(avg_chl, lon, lat) %>%
-    mice(method = "pmm", m = 1) # m = 1 for fast testing: default is 5
+climatology <- climatology %>%
+    group_by(id_pixel) %>%
+    mutate(avg_chl_interpolated = imputeTS::na.kalman(avg_chl, smooth = F)) %>%
+    ungroup()
 
-# Show density plot of imputed vs actual data
-densityplot(imputed_df, main = "Density of imputed data vs actual data")
-
-# Complete imputed df # 1
-imputed_df <- complete(imputed_df, 1)
-
-# Add interpolated chl to climatology
-climatology$avg_chl_interpolated <- imputed_df$avg_chl
-
-rm(imputed_df)
 #-------------------------------------------------------------------------------
 # Squish of climatology data in the selected percentile interval
 
@@ -170,7 +183,7 @@ rm(PERCENTILE_SQUISHING_INTERVAL)
 
 # - id_pixel
 # - id_date
-# - avg_chl
+# - avg_chl: chl value averaged over years by pixel, by date
 # - lon
 # - lat
 # - n_observations_used_per_date: numero di osservazioni utilizzate per calcolare la
@@ -203,7 +216,14 @@ climatology <- climatology %>%
 source(file.path(AUX_FUNCTIONS_PATH, "plot_calculated_indeces.R"))
 
 # Plot pixel 1730 indeces
+plot_calculated_indeces(1729)
 plot_calculated_indeces(1730)
+plot_calculated_indeces(1762)
+plot_calculated_indeces(1764)
+plot_calculated_indeces(1791)
+plot_calculated_indeces(1805)
+plot_calculated_indeces(1808)
+plot_calculated_indeces(1809)
 
 #-------------------------------------------------------------------------------
 # Find zero points
@@ -229,7 +249,7 @@ n_blooms_raw <- find_number_of_blooms(zero_pts_raw)
 # Barplot of frequency of number of blooms found
 table(n_blooms_raw)
 barplot(table(n_blooms_raw),
-        main = "Frequency of number of blooms found",
+        main = "Count of number of blooms found",
         col = "blue")
 
 # The calculated data is arranged in a dataframe
@@ -239,7 +259,7 @@ zero_points_df <- build_table(zero_pts_raw, n_blooms_raw) %>%
            id_week_zero_crossing = ceiling(id_date_zero_crossing / 7)) %>%
     arrange(id_pixel, id_date_zero_crossing)
 
-#rm(n_blooms, zero_pts)
+rm(n_blooms_raw, zero_pts_raw)
 #-------------------------------------------------------------------------------
 # Content of zero_points_df:
 
@@ -300,6 +320,8 @@ compare_data_interpolation(2624)
 #-------------------------------------------------------------------------------
 # Trovare I PUNTI DI ZERO SULLA MOVING AVERAGE INTERPOLATA, OSSIA SU D_mav_high_res_from_stine
 
+print("Finding new zero points and bloom...")
+
 # Find zero points of each climatology. SU D_MAV_HIGH_RES???
 zero_pts <- find_zero_points(climatology_high_res, "id_date_extended", D_mav_name = "D_mav_high_res_from_stine")
 
@@ -313,7 +335,9 @@ n_blooms <- find_number_of_blooms(zero_pts)
 
 # Barplot of frequency of number of blooms found
 table(n_blooms)
-barplot(table(n_blooms), main = "Frequency of number of blooms found")
+barplot(table(n_blooms),
+        main = "Count of number of blooms found",
+        col = "blue")
 
 # The data is arranged in a dataframe
 zero_points_df_high_res <- build_table(zero_pts, n_blooms) %>%
@@ -323,6 +347,59 @@ zero_points_df_high_res <- build_table(zero_pts, n_blooms) %>%
     # Flag pixels with 3 or more blooms
     arrange(id_pixel, id_date_zero_crossing)
 
-#rm(n_blooms, zero_pts)
+rm(n_blooms, zero_pts)
 #-------------------------------------------------------------------------------
+
+# Raccoglimento dati in tabella
+
+################################################
+### Ipotesi forte: il primo punto di zero è sicuramente un bloom start.
+################################################
+
+final_table_high_res <- zero_points_df_high_res %>%
+    
+    # Per ogni pixel
+    group_by(id_pixel) %>%
+    # Assegna un id unico ai punti di zero
+    mutate(id_zero = rep(1:n()/2, each=2, length.out = n())) %>%
+    
+    # Per ogni pixel, per ogni punto di zero
+    group_by(id_pixel, id_zero) %>%
+    # Fai la media dei due punti che identificano il punto di zero.
+    # Questo sarà la data/settimana IDENTIFICATIVA del punto di zero.
+    summarise(id_date_zero = mean(id_date_zero_crossing),
+              id_week_zero = mean(id_week_zero_crossing)) %>%
+    
+    # Assegna un id unico ai bloom
+    mutate(id_bloom = rep(1:n(), each=2, length.out = n())) %>%
+    # Per ogni pixel, per ogni bloom
+    group_by(id_pixel, id_bloom) %>%
+    # Calcola, durata, start e end
+    mutate(bloom_duration_days = id_date_zero - lag(id_date_zero),
+           bloom_duration_weeks = id_week_zero - lag(id_week_zero),
+           bloom_start_date = lag(id_date_zero),
+           bloom_start_week = lag(id_week_zero),
+           bloom_end_date = bloom_start_date + bloom_duration_days,
+           bloom_end_week = bloom_start_week + bloom_duration_weeks) %>%
+    
+    # Tieni solo pixel con durata >= 16
+    filter(bloom_duration_days >= MINIMUM_BLOOM_DURATION_DAYS | is.na(bloom_duration_days)) %>%
+    filter(!is.na(bloom_duration_days)) %>%
+    
+    # Per ogni pixel, aggiungi numero di bloom
+    group_by(id_pixel) %>%
+    mutate(n_bloom = n())
+
+# Remove unused columns
+final_table_high_res <- final_table_high_res %>%
+    select(-id_zero, -id_bloom)
+
+# Flagged pixels...
+flagged_pixels <- zero_points_df_high_res %>% filter(flagged) %>% pull(id_pixel)
+# Add lon and lat to final df
+final_table_high_res <- final_table_high_res %>%
+    ungroup() %>%
+    mutate(id_pixel = as.integer(id_pixel)) %>%
+    left_join(nc_dataframe, ., by = c("id_pixel", "lon", "lat")) %>%
+    mutate(flagged_too_many_blooms = as.character(id_pixel) %in% flagged_pixels)
 
