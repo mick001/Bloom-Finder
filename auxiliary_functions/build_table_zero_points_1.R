@@ -33,7 +33,9 @@ build_table <- function(zero_pts, n_blooms)
     }
     
     # Convert to tibble
-    df_out <- df_out %>% as_tibble()
+    df_out <- df_out %>%
+        mutate(id_pixel = as.integer(id_pixel)) %>%
+        as_tibble()
     
     return(df_out)
 }

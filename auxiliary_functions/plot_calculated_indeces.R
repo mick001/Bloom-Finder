@@ -24,10 +24,10 @@ plot_calculated_indeces <- function(id_pixel_to_plot)
     
     # Plot
     
-    plot(pixel$id_date, pixel$avg_chl, type="p", pch = 18, col = "red", xlab = "id_date", ylab = "Average chl", main = "Climatology on RAW data")
+    plot(pixel$id_date, pixel$avg_chl, type="p", pch = 18, col = "red", xlab = "id_date", ylab = "Avg_chl", main = "Climatology (RAW data)")
     lines(pixel$id_date, pixel$avg_chl, lwd = 2, col = "blue")
     
-    plot(pixel$id_date, pixel$avg_chl_interpolated, type="p", pch = 18, col = "red", xlab = "id_date", ylab = "Average chl intp", main = "Climatology interpolated")
+    plot(pixel$id_date, pixel$avg_chl_interpolated, type="p", pch = 18, col = "red", xlab = "id_date", ylab = "Avg_chl_interpolated", main = "Climatology with no NAs")
     lines(pixel$id_date, pixel$avg_chl_interpolated, lwd = 2, col = "blue")
     
     plot(pixel$id_date, pixel$A, type="p", pch = 18, col = "red", xlab = "id_date", ylab = "Anomalies", main = "Anomalies")
