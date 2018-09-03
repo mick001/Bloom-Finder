@@ -1,4 +1,7 @@
 #-------------------------------------------------------------------------------
+# Bloom finder script V. 1.0
+
+#-------------------------------------------------------------------------------
 # Clean workspace
 rm(list = ls())
 
@@ -268,6 +271,13 @@ unique_valid_pixels <- zero_points_df %>%
     distinct() %>%
     pull()
 
+# Pixels with a number of blooms equal or higher than 3
+flagged_pixels <- zero_points_df %>%
+    filter(flagged == TRUE) %>%
+    select(id_pixel) %>%
+    distinct() %>%
+    pull()
+
 print(paste("Interpolating ", length(unique_valid_pixels), " pixels...", sep = ""))
 
 # New climatology dataframe with new time axis (with increased time resolution)
@@ -292,6 +302,7 @@ climatology_high_res <- climatology_high_res %>%
            D_mav_high_res_from_stine = imputeTS::na.interpolation(D_mav, option="stine")) %>%
     ungroup()
 
+rm(zero_points_df)
 #-------------------------------------------------------------------------------
 # Check interpolation quality on a random pixel
 
@@ -331,13 +342,30 @@ rm(n_blooms, zero_pts)
 # plot_calculated_indeces(2807)
 
 #-------------------------------------------------------------------------------
-# Data collection and reordering
+# Generate TABELLA_DUE
 
 ################################################################################
 ### Ipotesi forte: il primo punto di zero è sicuramente un bloom start.
 ################################################################################
 
-final_table_high_res <- zero_points_df_high_res %>%
+# Content of TABELLA_DUE
+#
+# - id_pixel
+# - bloom_duration_days
+# - bloom_duration_weeks
+# - bloom_start_date
+# - bloom_start_week
+# - bloom_end_date
+# - bloom_end_week
+# - n_blooms: number of blooms found for this pixel
+# - flagged: TRUE if for this pixel the number of blooms found is >= 3.
+# - lon
+# - lat
+
+# Load function to find maximum
+source(file.path(AUX_FUNCTIONS_PATH, "find_maximum_chl.R"))
+
+TABELLA_DUE <- zero_points_df_high_res %>%
     
     # Per ogni pixel
     group_by(id_pixel) %>%
@@ -365,23 +393,43 @@ final_table_high_res <- zero_points_df_high_res %>%
            bloom_end_week = bloom_start_week + bloom_duration_weeks) %>%
     
     # Tieni solo pixel con durata >= 16
-    filter(bloom_duration_days >= MINIMUM_BLOOM_DURATION_DAYS | is.na(bloom_duration_days)) %>%
+    filter(bloom_duration_days >= MINIMUM_BLOOM_DURATION_DAYS) %>%
     filter(!is.na(bloom_duration_days)) %>%
     
     # Per ogni pixel, aggiungi numero di bloom
     group_by(id_pixel) %>%
-    mutate(n_bloom = n())
+    mutate(n_blooms = n())
 
 # Remove unused columns
-final_table_high_res <- final_table_high_res %>%
-    select(-id_zero, -id_bloom)
+TABELLA_DUE <- TABELLA_DUE %>%
+    select(-id_zero, -id_bloom, -id_date_zero, -id_week_zero) %>% 
+    # Remove grouping by pixel
+    ungroup()
 
-# Flagged pixels...
-flagged_pixels <- zero_points_df_high_res %>% filter(flagged) %>% pull(id_pixel)
 # Add lon and lat to final df
-final_table_high_res <- final_table_high_res %>%
-    ungroup() %>%
-    mutate(id_pixel = as.integer(id_pixel)) %>%
-    left_join(nc_dataframe, ., by = c("id_pixel", "lon", "lat")) %>%
-    mutate(flagged_too_many_blooms = as.character(id_pixel) %in% flagged_pixels)
+TABELLA_DUE <- TABELLA_DUE %>%
+    left_join(nc_dataframe, by = c("id_pixel"))
 
+# Add max chl
+TABELLA_DUE$max_chl <- find_max_chl()
+
+rm(zero_points_df_high_res, MINIMUM_BLOOM_DURATION_DAYS, find_max_chl)
+#-------------------------------------------------------------------------------
+# Generate TABELLA_TRE
+
+# Content of TABELLA_TRE
+
+# - id_pixel
+# - lon
+# - lat
+# - n_blooms: number of blooms found for this pixel
+# - too_many_blooms: TRUE if for this pixel the number of blooms found is >= 3.
+
+TABELLA_TRE <- TABELLA_DUE %>%
+    select(id_pixel, n_blooms) %>%
+    distinct() %>%
+    left_join(nc_dataframe, ., by = c("id_pixel")) %>%
+    mutate(too_many_blooms = id_pixel %in% flagged_pixels)
+
+rm(nc_dataframe)
+#-------------------------------------------------------------------------------
