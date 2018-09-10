@@ -17,6 +17,7 @@ require(scales)       # 0.5.0
 # TTR                 # 0.23-3
 # lazyeval            # 0.2.1
 # log4r               # 0.2
+# readr               # 1.1.1
 
 #-------------------------------------------------------------------------------
 # Set global parameters
@@ -37,11 +38,11 @@ MINIMUM_BLOOM_DURATION_DAYS <- 16
 #-------------------------------------------------------------------------------
 # Set paths
 
-# Path of .nc files
+# Path of .nc files. This path must point to the folder containing .nc files
 NC_FILES_PATH <- "C:\\users\\michy\\desktop\\christian_paper\\DATA_TEST"
-# Auxiliary functions path
+# Auxiliary functions path. This path must point to the folder "auxiliary_functions"
 AUX_FUNCTIONS_PATH <- "C:\\users\\michy\\desktop\\christian_paper\\SCRIPT\\auxiliary_functions"
-# Output directory
+# Output directory. This path can point to whathever folder you wish
 OUTPUT_PATH <- "C:\\users\\michy\\desktop"
 
 #-------------------------------------------------------------------------------
@@ -160,7 +161,7 @@ climatology <- climatology %>%
 
 rm(PERCENTILE_SQUISHING_INTERVAL)
 #-------------------------------------------------------------------------------
-# Ora in dataframe climatology:
+# Content of dataframe climatology:
 
 # - id_pixel: unique pixel id
 # - id_date: unique date of year
@@ -346,6 +347,7 @@ rm(n_blooms, zero_pts)
 
 ################################################################################
 ### Ipotesi forte: il primo punto di zero è sicuramente un bloom start.
+### o meglio, d_mav ha pendenza positiva nel primo punto di zero.
 ################################################################################
 
 # Content of TABELLA_DUE
@@ -433,3 +435,9 @@ TABELLA_TRE <- TABELLA_DUE %>%
 
 rm(nc_dataframe)
 #-------------------------------------------------------------------------------
+# Save results
+
+readr::write_csv(climatology, file.path(OUTPUT_PATH, "climatology.csv"))
+readr::write_csv(climatology_high_res, file.path(OUTPUT_PATH, "climatology_high_res.csv"))
+readr::write_csv(TABELLA_DUE, file.path(OUTPUT_PATH, "TABELLA_DUE.csv"))
+readr::write_csv(TABELLA_TRE, file.path(OUTPUT_PATH, "TABELLA_TRE.csv"))
