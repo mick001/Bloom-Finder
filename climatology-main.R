@@ -203,14 +203,14 @@ climatology <- climatology %>%
 source(file.path(AUX_FUNCTIONS_PATH, "plot_calculated_indeces.R"))
 
 # Plot pixel 1730 indeces
-plot_calculated_indeces(1729)
-plot_calculated_indeces(1730)
-plot_calculated_indeces(1762)
-plot_calculated_indeces(1764)
-plot_calculated_indeces(1791)
-plot_calculated_indeces(1805)
-plot_calculated_indeces(1808)
-plot_calculated_indeces(1809)
+# plot_calculated_indeces(1729)
+# plot_calculated_indeces(1730)
+# plot_calculated_indeces(1762)
+# plot_calculated_indeces(1764)
+# plot_calculated_indeces(1791)
+# plot_calculated_indeces(1805)
+# plot_calculated_indeces(1808)
+# plot_calculated_indeces(1809)
 
 rm(RUNNING_AVERAGE_WINDOW, THRESHOLD_PERCENTAGE)
 #-------------------------------------------------------------------------------
@@ -312,7 +312,7 @@ rm(zero_points_df)
 # Check interpolation quality on a random pixel
 
 source(file.path(AUX_FUNCTIONS_PATH, "actual_vs_interpolated_plots.R"))
-compare_data_interpolation(2624)
+# compare_data_interpolation(2624)
 
 #-------------------------------------------------------------------------------
 # Find zero points and blooms on the high resolution moving average (i.e. on D_mav_high_res_from_stine)
