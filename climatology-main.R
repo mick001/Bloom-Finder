@@ -111,10 +111,13 @@ climatology <- nc_dataframe %>%
     group_by(id_pixel, id_date) %>%
     # Calculate: climatology, i.e. average value for date for pixel (avg_chl)
     #           number of observations used in each date (n_observations_used_per_date)
+    #           number of dates (images per pixel)
     summarise_(.dots = setNames(list(lazyeval::interp( ~ MEAN_FUNCTION(CHL1_mean)),
-                                     lazyeval::interp( ~ sum(!is.na(CHL1_mean))) ),
+                                     lazyeval::interp( ~ sum(!is.na(CHL1_mean))),
+                                     lazyeval::interp( ~n()) ),
                                 c("avg_chl",
-                                  "n_observations_used_per_date"))) %>%
+                                  "n_observations_used_per_date",
+                                  "n_observations_total"))) %>%
     # Calculate, for each pixel: how many missing data in the climatology (NA_in_climatology_per_pixel) 
     #                           should the pixel be kept? (keep_pixel_NA_consecutive: TRUE keep, FALSE drop)
     mutate(NA_in_climatology_per_pixel = sum(is.na(avg_chl)),
