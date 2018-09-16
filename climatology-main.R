@@ -63,6 +63,20 @@ nc_dataframe <- assign_id_and_melt(nc_files_list)
 
 rm(nc_files_list, NC_FILES_PATH)
 #-------------------------------------------------------------------------------
+# Squish of chl data in the selected percentile interval
+
+# print("Squishing climatology in the selected percentile interval...")
+# 
+# nc_dataframe1 <- nc_dataframe %>%
+#     group_by(id_pixel, id_date) %>%
+#     mutate(CHL1_mean = squish(CHL1_mean,
+#                               quantile(CHL1_mean,
+#                                        PERCENTILE_SQUISHING_INTERVAL,
+#                                        na.rm = T))) %>%
+#     ungroup()
+# 
+# rm(PERCENTILE_SQUISHING_INTERVAL)
+#-------------------------------------------------------------------------------
 # Calculate climatology on RAW chl
 
 print("Calculating climatology...")
@@ -160,6 +174,7 @@ climatology <- climatology %>%
                                          quantile(avg_chl_interpolated, PERCENTILE_SQUISHING_INTERVAL)))
 
 rm(PERCENTILE_SQUISHING_INTERVAL)
+
 #-------------------------------------------------------------------------------
 # Content of dataframe climatology:
 
@@ -363,6 +378,8 @@ rm(n_blooms, zero_pts)
 # - flagged: TRUE if for this pixel the number of blooms found is >= 3.
 # - lon
 # - lat
+# - max_chl maximum value of chl during bloom
+# - id_date_max_chl corresponding id_date of max_chl
 
 # Load function to find maximum
 source(file.path(AUX_FUNCTIONS_PATH, "find_maximum_chl.R"))
@@ -412,8 +429,9 @@ TABELLA_DUE <- TABELLA_DUE %>%
 TABELLA_DUE <- TABELLA_DUE %>%
     left_join(nc_dataframe, by = c("id_pixel"))
 
-# Add max chl
-TABELLA_DUE$max_chl <- find_max_chl()
+# Add max chl and date of max chl
+TABELLA_DUE <- TABELLA_DUE %>%
+    bind_cols(find_max_chl())
 
 rm(zero_points_df_high_res, MINIMUM_BLOOM_DURATION_DAYS, find_max_chl)
 #-------------------------------------------------------------------------------
