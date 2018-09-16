@@ -65,17 +65,17 @@ rm(nc_files_list, NC_FILES_PATH)
 #-------------------------------------------------------------------------------
 # Squish of chl data in the selected percentile interval
 
-# print("Squishing climatology in the selected percentile interval...")
-# 
-# nc_dataframe1 <- nc_dataframe %>%
-#     group_by(id_pixel, id_date) %>%
-#     mutate(CHL1_mean = squish(CHL1_mean,
-#                               quantile(CHL1_mean,
-#                                        PERCENTILE_SQUISHING_INTERVAL,
-#                                        na.rm = T))) %>%
-#     ungroup()
-# 
-# rm(PERCENTILE_SQUISHING_INTERVAL)
+print("Squishing climatology in the selected percentile interval...")
+
+nc_dataframe <- nc_dataframe %>%
+    group_by(id_pixel, id_date) %>%
+    mutate(CHL1_mean = squish(CHL1_mean,
+                              quantile(CHL1_mean,
+                                       PERCENTILE_SQUISHING_INTERVAL,
+                                       na.rm = T))) %>%
+    ungroup()
+
+rm(PERCENTILE_SQUISHING_INTERVAL)
 #-------------------------------------------------------------------------------
 # Calculate climatology on RAW chl
 
@@ -165,17 +165,6 @@ climatology <- climatology %>%
     ungroup()
 
 #-------------------------------------------------------------------------------
-# Squish of climatology data in the selected percentile interval
-
-print("Squishing climatology in the selected percentile interval...")
-
-climatology <- climatology %>%
-    mutate(avg_chl_interpolated = squish(avg_chl_interpolated,
-                                         quantile(avg_chl_interpolated, PERCENTILE_SQUISHING_INTERVAL)))
-
-rm(PERCENTILE_SQUISHING_INTERVAL)
-
-#-------------------------------------------------------------------------------
 # Content of dataframe climatology:
 
 # - id_pixel: unique pixel id
@@ -187,7 +176,7 @@ rm(PERCENTILE_SQUISHING_INTERVAL)
 #                               climatology for each date of a given pixel
 # - NA_in_climatology_per_pixel: number of NAs in climatology for a given pixel
 # - avg_chl_interpolated: climatology linearly interpolated (to impute missing
-#                       values) and then squished in the percentile interval given
+#                       values)
 
 #-------------------------------------------------------------------------------
 # Calculate useful indeces over the climatology without missing values (avg_chl_interpolated)
@@ -432,6 +421,12 @@ TABELLA_DUE <- TABELLA_DUE %>%
 # Add max chl and date of max chl
 TABELLA_DUE <- TABELLA_DUE %>%
     bind_cols(find_max_chl())
+
+# # Add id bloom per each pixel and say which bloom is maximum
+# TABELLA_DUE <- TABELLA_DUE %>%
+#     group_by(id_pixel) %>%
+#     mutate(id_bloom_by_pixel = 1:n()) %>%
+#     ungroup()
 
 rm(zero_points_df_high_res, MINIMUM_BLOOM_DURATION_DAYS, find_max_chl)
 #-------------------------------------------------------------------------------
