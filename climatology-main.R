@@ -114,7 +114,7 @@ climatology <- nc_dataframe %>%
     #           number of dates (images per pixel)
     summarise_(.dots = setNames(list(lazyeval::interp( ~ MEAN_FUNCTION(CHL1_mean)),
                                      lazyeval::interp( ~ sum(!is.na(CHL1_mean))),
-                                     lazyeval::interp( ~n()) ),
+                                     lazyeval::interp( ~ n()) ),
                                 c("avg_chl",
                                   "n_observations_used_per_date",
                                   "n_observations_total"))) %>%
@@ -158,7 +158,7 @@ nc_dataframe <- nc_dataframe %>%
     distinct()
 
 #-------------------------------------------------------------------------------
-# Imputation of missing data using Kalman smoothing
+# Imputation of missing data using linear interpolation
 
 print("Imputing missing data...")
 
