@@ -217,6 +217,17 @@ source(file.path(AUX_FUNCTIONS_PATH, "plot_calculated_indeces.R"))
 
 rm(RUNNING_AVERAGE_WINDOW, THRESHOLD_PERCENTAGE)
 #-------------------------------------------------------------------------------
+# Positive slope check
+
+# Since later in the script the following assumption is made:
+
+################################################################################
+### Ipotesi forte: d_mav ha pendenza positiva nel primo punto di zero.
+################################################################################
+
+# A check is performed to analyse only those pixels for which the hypothesis hold
+
+#-------------------------------------------------------------------------------
 # Find zero points
 
 print("Finding zero points and blooms...")
