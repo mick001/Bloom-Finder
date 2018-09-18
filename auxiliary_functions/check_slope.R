@@ -41,7 +41,7 @@ check_slope <- function()
         # If point 2 is higher than point 1 then slope wrt time is positive!
         if(deriv_pt2 > deriv_pt1)
         {
-            out_pixels[[k]] <- i
+            out_pixels[[k]] <- pixels[i]
             k <- k + 1
         }
     }

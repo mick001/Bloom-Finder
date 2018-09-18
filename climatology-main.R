@@ -225,8 +225,16 @@ rm(RUNNING_AVERAGE_WINDOW, THRESHOLD_PERCENTAGE)
 ### Ipotesi forte: d_mav ha pendenza positiva nel primo punto di zero.
 ################################################################################
 
-# A check is performed to analyse only those pixels for which the hypothesis hold
+# a check is performed to analyse only those pixels for which the hypothesis hold
 
+# Load function to do the check
+source(file.path(AUX_FUNCTIONS_PATH, "check_slope.R"))
+pixel_checked <- check_slope()
+
+climatology <- climatology %>%
+    filter(id_pixel %in% pixel_checked)
+
+rm(check_slope, pixel_checked)
 #-------------------------------------------------------------------------------
 # Find zero points
 
