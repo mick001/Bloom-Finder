@@ -229,12 +229,17 @@ rm(RUNNING_AVERAGE_WINDOW, THRESHOLD_PERCENTAGE)
 
 # Load function to do the check
 source(file.path(AUX_FUNCTIONS_PATH, "check_slope.R"))
+# Pixel checked and that will be further processed
 pixel_checked <- check_slope()
+# Pixel discarded since they do not satisfy hypothesis
+pixel_discarded <- unique(climatology$id_pixel)[!unique(climatology$id_pixel) %in% pixel_checked]
+log4r::warn(logger, paste("Pixels discarded due to not satisfying hypothesis: ", pixel_discarded, sep = ""))
 
+# Filter climatology
 climatology <- climatology %>%
     filter(id_pixel %in% pixel_checked)
 
-rm(check_slope, pixel_checked)
+rm(check_slope, pixel_checked, pixel_discarded)
 #-------------------------------------------------------------------------------
 # Find zero points
 
