@@ -278,6 +278,13 @@ zero_points_df <- build_table(zero_pts_raw, n_blooms_raw) %>%
            id_week_zero_crossing = ceiling(id_date_zero_crossing / 7)) %>%
     arrange(id_pixel, id_date_zero_crossing)
 
+# Pixels with a number of blooms equal or higher than 3. Flagged for later (TABELLA_TRE)
+flagged_pixels <- zero_points_df %>%
+    filter(flagged == TRUE) %>%
+    select(id_pixel) %>%
+    distinct() %>%
+    pull()
+
 rm(n_blooms_raw, zero_pts_raw)
 #-------------------------------------------------------------------------------
 # Content of zero_points_df:
@@ -296,16 +303,9 @@ rm(n_blooms_raw, zero_pts_raw)
 
 print("Interpolating data to increase time resolution from 8 days to 1 day...")
 
-# Extract list of valid pixels (i.e. pixels with less than 3 blooms)
+# Extract list of pixels to interpolate
 unique_valid_pixels <- zero_points_df %>%
-    filter(flagged == FALSE) %>%
-    select(id_pixel) %>%
-    distinct() %>%
-    pull()
-
-# Pixels with a number of blooms equal or higher than 3
-flagged_pixels <- zero_points_df %>%
-    filter(flagged == TRUE) %>%
+#    filter(flagged == FALSE) %>%
     select(id_pixel) %>%
     distinct() %>%
     pull()
