@@ -34,6 +34,8 @@ PERCENTILE_SQUISHING_INTERVAL <- c(0.05, 0.95)
 MEAN_FUNCTION <- "mean"
 # Minimum duration in days for a suspected bloom to be considered an actual bloom
 MINIMUM_BLOOM_DURATION_DAYS <- 16
+# Pixels with number of blooms >= N_BLOOM_MAX are flagged in TABELLA_TRE
+N_BLOOM_MAX <- 3
 
 #-------------------------------------------------------------------------------
 # Set paths
@@ -274,7 +276,7 @@ barplot(table(n_blooms_raw),
 # The calculated data is arranged in a dataframe
 zero_points_df <- build_table(zero_pts_raw, n_blooms_raw) %>%
     # Flag pixels with 3 or more blooms
-    mutate(flagged = n_blooms >= 3,
+    mutate(flagged = n_blooms >= N_BLOOM_MAX,
            id_week_zero_crossing = ceiling(id_date_zero_crossing / 7)) %>%
     arrange(id_pixel, id_date_zero_crossing)
 
