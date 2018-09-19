@@ -22,7 +22,7 @@ find_zero_points <- function(x, id_date_name="id_date", D_mav_name = "D_mav")
         pull()
     
     # Number of unique pixels that will be examined
-    print(paste("Number of pixels to be examined: ", length(unique_id_pixel)), sep = "")
+    print(paste("Number of pixels to be analysed: ", length(unique_id_pixel)), sep = "")
     
     # List of zero points
     zero_points <- list()
@@ -30,7 +30,7 @@ find_zero_points <- function(x, id_date_name="id_date", D_mav_name = "D_mav")
     k <- 1
     for(i in unique_id_pixel)
     {
-        print(paste("Finding zeros of pixel ", i))
+        #print(paste("Finding zeros of pixel ", i))
         # Get time axis for pixel
         time_axis <- x %>% filter(id_pixel == i) %>% select_(id_date_name) %>% pull()
         # Select derivative smoothed with running average (moving average)
@@ -42,9 +42,9 @@ find_zero_points <- function(x, id_date_name="id_date", D_mav_name = "D_mav")
         # if I have a,b,c and a > 0 and b < 0 and c < 0. I get the index of b
         ix <- which(updn != 0)
         # Number of zero points found
-        print(paste("Zero points found:", length(ix)))
+        #print(paste("Zero points found:", length(ix)))
         # The bloom is in between these days
-        print(paste(time_axis[ix], time_axis[ix - 1]))
+        #print(paste(time_axis[ix], time_axis[ix - 1]))
         # Add found points to output list
         zero_points[[k]] <- c(time_axis[ix], time_axis[ix - 1])
         # Increment index

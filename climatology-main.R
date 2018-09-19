@@ -1,5 +1,5 @@
 #-------------------------------------------------------------------------------
-# Bloom finder script V. 1.0
+# Bloom finder script V. 1.1
 
 #-------------------------------------------------------------------------------
 # Clean workspace
@@ -260,11 +260,13 @@ n_blooms_raw <- find_number_of_blooms(zero_pts_raw)
 # 5. Il numero di bloom trovati è quindi: n_bloom = Punti trovati / 4
 
 # Barplot of count of number of blooms found
-print("Count of number of blooms found")
+print("Count of number of blooms found (on RAW data):")
 table(n_blooms_raw)
 barplot(table(n_blooms_raw),
-        main = "Count of number of blooms found",
-        col = "blue")
+        main = "Number of blooms found (RAW data)",
+        col = "blue",
+        xlab = "Number of blooms",
+        ylab = "Count")
 
 # The calculated data is arranged in a dataframe
 zero_points_df <- build_table(zero_pts_raw, n_blooms_raw) %>%
@@ -349,10 +351,13 @@ zero_pts <- find_zero_points(climatology_high_res,
 n_blooms <- find_number_of_blooms(zero_pts)
 
 # Barplot of frequency of number of blooms found
+print("Number of blooms found (high resolution):")
 table(n_blooms)
 barplot(table(n_blooms),
-        main = "Count of number of blooms found",
-        col = "blue")
+        main = "Number of blooms found (high res)",
+        col = "green",
+        xlab = "Number of blooms",
+        ylab = "Count")
 
 # The data is arranged in a dataframe
 zero_points_df_high_res <- build_table(zero_pts, n_blooms) %>%
