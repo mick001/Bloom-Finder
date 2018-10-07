@@ -27,16 +27,14 @@
     #   D = time derivative of cumulative sum of anomalies
     #   D_mav = moving average (or running average of derivative)
 #
-# 7. Zero points of D_mav and number of blooms of each pixel are searched.
-#
-# 8. Pixels with number of blooms greater than N_BLOOM_MAX are flagged and later flagged in TABELLA_TRE in the variable "too_many_blooms".
-#
-# 9. The resolution of both D_mav and chl is increased from one observation every 8 days to 1 observation per day.
+# 7. Just before increasing the resolution of the data, the time axis is shifted so that
+#    the time series can begin from a point defined by the user.
+#    Then, the resolution of both D_mav and chl is increased from one observation every 8 days to 1 observation per day.
 #    The increase in resolution is obtained by interpolation using Stineman's algorithm.
 #
-# 10.Zero points of D_mav and number of blooms of each pixel are searched again, this time on the higher resolution data.
+# 8. Zero points of D_mav and number of blooms of each pixel are searched on the higher resolution data.
 #
-# 11. Quantities of interest are calculated and stored in TABELLA_DUE
+# 9. Quantities of interest are calculated and stored in TABELLA_DUE
 #
     # Content of TABELLA_DUE
         #
@@ -54,9 +52,9 @@
         # - max_chl: maximum value of chl during bloom
         # - id_date_max_chl: corresponding id_date of max_chl
 #
-# 12. Blooms that last less than the specified number of days in MINIMUM_BLOOM_DURATION_DAYS are removed from TABELLA_DUE.
+# 10. Blooms that last less than the specified number of days in MINIMUM_BLOOM_DURATION_DAYS are removed from TABELLA_DUE.
 #
-# 13. Quantities of interest are calculated and stored in TABELLA_TRE
+# 11. Quantities of interest are calculated and stored in TABELLA_TRE
 #
     # Content of TABELLA_TRE
     
@@ -66,7 +64,7 @@
         # - n_blooms: number of blooms found for this pixel
         # - too_many_blooms: TRUE if for this pixel the number of blooms found is >= N_BLOOM_MAX.
 #
-# 14. The following tables are saved in .csv format in OUTPUT_PATH:
+# 12. The following tables are saved in .csv format in OUTPUT_PATH:
 #
         # TABELLA_DUE: results as specified in 11.
         # TABELLA_TRE: results as specified in 13.

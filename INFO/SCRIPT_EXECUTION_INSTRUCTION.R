@@ -48,6 +48,9 @@
 #     
 #     # Pixels with number of blooms >= N_BLOOM_MAX are flagged in TABELLA_TRE
 #     N_BLOOM_MAX <- 3
+#
+#     # New starting time of climatology is id_date = 210
+#     NEW_STARTING_POINT <- 210
 # 
 # 3. Set the required paths
 # 
@@ -71,8 +74,7 @@
 # 
 # 6. To quickly inspect graphically single pixels, use the following functions
 # 
-#     6.1 plot_calculated_indeces(1729)
-#     6.2 compare_data_interpolation(2807)
+#     6.1 plot_calculated_indexes(1729)
 # 
 # 7. At the end of each execution a log file is generated. The log file name is "log_climatology_main.log".
 #       

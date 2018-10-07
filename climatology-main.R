@@ -3,8 +3,6 @@
 
 # Version: 2.0
 
-# Manca CHECK su costruzione tabella due
-
 #-------------------------------------------------------------------------------
 # Clean workspace
 rm(list = ls())
@@ -50,7 +48,7 @@ NEW_STARTING_POINT <- 210
 #NC_FILES_PATH <- "C:\\users\\michy\\desktop\\christian_paper\\DATA_TEST"
 NC_FILES_PATH <- "C:\\users\\michy\\desktop\\christian_paper\\CHL_DATA_EJS"
 # Auxiliary functions path. This path must point to the folder "auxiliary_functions"
-AUX_FUNCTIONS_PATH <- "C:\\users\\michy\\desktop\\christian_paper\\SCRIPT_variazione\\auxiliary_functions"
+AUX_FUNCTIONS_PATH <- "C:\\users\\michy\\desktop\\christian_paper\\SCRIPT_2.0\auxiliary_functions"
 # Output directory. This path can point to whatever folder you wish
 OUTPUT_PATH <- "C:\\users\\michy\\desktop"
 
@@ -254,13 +252,7 @@ climatology_high_res <- climatology %>%
     left_join(climatology_high_res, ., by = c("id_pixel", "id_date_extended" = "id_date"))
 
 #-------------------------------------------------------------------------------
-################################################################################
-################################################################################
 #  MAP: shift time series
-
-# plot(climatology_high_res$id_date_extended[climatology_high_res$id_pixel == 1729],
-#      climatology_high_res$D_mav[climatology_high_res$id_pixel == 1729])
-# abline(0, 0)
 
 climatology_high_res <- climatology_high_res %>%
     # Group by pixel: for each pixel
@@ -277,10 +269,6 @@ climatology_high_res <- climatology_high_res %>%
     select(-placeholder) %>%
     ungroup()
 
-# plot(climatology_high_res$new_id_date_extended[climatology_high_res$id_pixel == 1729],
-#      climatology_high_res$D_mav[climatology_high_res$id_pixel == 1729])
-# abline(0, 0)
-
 # Keep correspondance between the two time axis
 corresp <- climatology_high_res %>%
     select(id_date_extended,
@@ -291,10 +279,6 @@ corresp <- climatology_high_res %>%
 climatology_high_res <- climatology_high_res %>%
     select(-id_date_extended) %>%
     rename(id_date_extended = new_id_date_extended)
-
-################################################################################
-################################################################################
-###
 
 # Interpolate (by pixel) using Stineman algorithm
 climatology_high_res <- climatology_high_res %>%
@@ -461,40 +445,35 @@ TABELLA_TRE <- TABELLA_DUE %>%
 
 rm(nc_dataframe)
 #-------------------------------------------------------------------------------
+# Get back TABELLA_DUE to old id_date...
 
-################################################################################
-################################################################################
-# Tabella DUE va riportata alla vecchia id_date...
-
-# Problema 1. I bloom vanno "asfaltati"... lo faccio con floor.
-# Il giorno di bloom (start/end) è quindi, per convenzione, il primo dei due che
-# giorni che lo indentificano
+# 1. Round bloom date using floor: bloom start/end is therefore the first of the two
+# days that identify the corresponding zero point.
 
 TABELLA_DUE <- TABELLA_DUE %>%
     mutate(bloom_start_date = floor(bloom_start_date),
            bloom_end_date = floor(bloom_end_date)) %>%
-#TABELLA_DUE <- TABELLA_DUE %>%
+
     left_join(corresp, by = c("bloom_start_date" = "id_date_extended")) %>%
-#TABELLA_DUE <- TABELLA_DUE %>%
+
     select(-bloom_start_date) %>%
     rename(bloom_start_date = new_id_date_extended) %>%
-#TABELLA_DUE <- TABELLA_DUE %>%
+
     left_join(corresp, by = c("bloom_end_date" = "id_date_extended")) %>%
-#TABELLA_DUE <- TABELLA_DUE %>%
+
     select(-bloom_end_date) %>%
     rename(bloom_end_date = new_id_date_extended) %>%
-#TABELLA_DUE <- TABELLA_DUE %>%
+
     left_join(corresp, by = c("id_date_max_chl" = "id_date_extended")) %>%
-#TABELLA_DUE <- TABELLA_DUE %>%
+
     select(-id_date_max_chl) %>%
     rename(id_date_max_chl = new_id_date_extended) %>%
-#TABELLA_DUE <- TABELLA_DUE %>%
+
     mutate(bloom_start_week = ceiling(bloom_start_date / 7),
            bloom_end_week = ceiling(bloom_end_date / 7))
 
 
-################################################################################
-# Anche climatology_high_res va riportata al vecchio indice temporale
+# Also id_date of climatology_high_res must be reverted to old id_date
 corresp <- corresp %>%
     rename(old_id_date_extended = id_date_extended)
 
@@ -504,10 +483,6 @@ climatology_high_res <- climatology_high_res %>%
     rename(id_date_extended = old_id_date_extended) %>%
     arrange(id_pixel, id_date_extended)
     
-
-################################################################################
-
-###
 rm(corresp)
 #-------------------------------------------------------------------------------
 # Save results
