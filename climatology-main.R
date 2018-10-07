@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------------------
 # Bloom finder script
 
-# Version: 2.0
+# Version: 2.1
 
 #-------------------------------------------------------------------------------
 # Clean workspace
@@ -48,7 +48,7 @@ NEW_STARTING_POINT <- 210
 #NC_FILES_PATH <- "C:\\users\\michy\\desktop\\christian_paper\\DATA_TEST"
 NC_FILES_PATH <- "C:\\users\\michy\\desktop\\christian_paper\\CHL_DATA_EJS"
 # Auxiliary functions path. This path must point to the folder "auxiliary_functions"
-AUX_FUNCTIONS_PATH <- "C:\\users\\michy\\desktop\\christian_paper\\SCRIPT_2.0\\auxiliary_functions"
+AUX_FUNCTIONS_PATH <- "C:\\users\\michy\\desktop\\christian_paper\\SCRIPT_2\\auxiliary_functions"
 # Output directory. This path can point to whatever folder you wish
 OUTPUT_PATH <- "C:\\users\\michy\\desktop"
 
@@ -252,7 +252,7 @@ climatology_high_res <- climatology %>%
     left_join(climatology_high_res, ., by = c("id_pixel", "id_date_extended" = "id_date"))
 
 #-------------------------------------------------------------------------------
-#  MAP: shift time series
+#  MAP: Shift time series
 
 climatology_high_res <- climatology_high_res %>%
     # Group by pixel: for each pixel
@@ -295,42 +295,64 @@ source(file.path(AUX_FUNCTIONS_PATH, "actual_vs_interpolated_plots.R"))
 # actual_vs_interpolated_plots(1729, climatology_high_res)
 
 #-------------------------------------------------------------------------------
-# Positive slope check
+# Positive slope check: not executed since a solution has been found
 
-# Since later in the script the following assumption is made:
-## Strong hypothesis: D_mav has positive slope in the first zero point
-# a check is performed to analyse only those pixels for which the hypothesis hold
+# # Since later in the script the following assumption is made:
+# ## Strong hypothesis: D_mav has positive slope in the first zero point
+# # a check is performed to analyse only those pixels for which the hypothesis hold
+# 
+# # Load function to do the check
+# source(file.path(AUX_FUNCTIONS_PATH, "check_slope.R"))
+# # Pixel checked and that will be further processed
+# pixel_checked <- check_slope(climatology_high_res)
+# # Pixel discarded since they do not satisfy hypothesis
+# pixel_discarded <- unique(climatology$id_pixel)[!unique(climatology$id_pixel) %in% pixel_checked]
+# # Log discarded pixels
+# log4r::warn(logger, paste("Pixels discarded due to not satisfying slope hypothesis: ",
+#                           paste(pixel_discarded, collapse = " "), sep = ""))
+# log4r::warn(logger, paste("Analysis will continue on: ", length(pixel_checked), " pixels.", sep=""))
+# log4r::warn(logger, paste("Analysis will continue on the following pixel percentage: ",
+#                           round(length(pixel_checked)/(length(pixel_checked)+length(pixel_discarded))*100, 2),
+#                           "%", sep=""))
+# # Filter climatology according to checked pixels
+# climatology_high_res <- climatology_high_res %>%
+#      filter(id_pixel %in% pixel_checked)
+# 
+# rm(check_slope, pixel_checked, pixel_discarded)
 
-# Load function to do the check
+# Finds pixels with slope problem and point where to cut to remove the problem
 source(file.path(AUX_FUNCTIONS_PATH, "check_slope.R"))
-# Pixel checked and that will be further processed
-pixel_checked <- check_slope(climatology_high_res)
-# Pixel discarded since they do not satisfy hypothesis
-pixel_discarded <- unique(climatology$id_pixel)[!unique(climatology$id_pixel) %in% pixel_checked]
-# Log discarded pixels
-log4r::warn(logger, paste("Pixels discarded due to not satisfying slope hypothesis: ",
-                          paste(pixel_discarded, collapse = " "), sep = ""))
-log4r::warn(logger, paste("Analysis will continue on: ", length(pixel_checked), " pixels.", sep=""))
-log4r::warn(logger, paste("Analysis will continue on the following pixel percentage: ",
-                          round(length(pixel_checked)/(length(pixel_checked)+length(pixel_discarded))*100, 2),
-                          "%", sep=""))
-# Filter climatology according to checked pixels
-climatology_high_res <- climatology_high_res %>%
-     filter(id_pixel %in% pixel_checked)
+pixel_slope_problem <- check_slope(climatology_high_res, pixels_checked = F)
 
-rm(check_slope, pixel_checked, pixel_discarded)
 #-------------------------------------------------------------------------------
 # Find zero points and blooms on the high resolution moving average (i.e. on D_mav_high_res_from_stine)
 
 print("Finding zero points and blooms on finer data...")
 source(file.path(AUX_FUNCTIONS_PATH, "find_zero_points.R"))
+source(file.path(AUX_FUNCTIONS_PATH, "find_zero_points_sanitize_slope.R"))
 source(file.path(AUX_FUNCTIONS_PATH, "find_number_of_blooms.R"))
 source(file.path(AUX_FUNCTIONS_PATH, "build_table_zero_points_1.R"))
 
 # Find zero points of each climatology
-zero_pts <- find_zero_points(climatology_high_res,
-                             id_date_name = "id_date_extended",
-                             D_mav_name = "D_mav_high_res_from_stine")
+if(length(pixel_slope_problem[[1]]) > 0)
+{
+    # If some pixel have "the slope problem", account for it
+    # Finds zero points by accounting for positive slope check
+    zero_pts <- find_zero_points_sanitize_slope(climatology_high_res,
+                                 id_date_name = "id_date_extended",
+                                 D_mav_name = "D_mav_high_res_from_stine",
+                                 problematic_pixels = pixel_slope_problem)
+    log4r::warn(logger, paste("Pixels with slope problem (still kept in the analysis): ",
+                              paste(pixel_slope_problem[[1]], collapse = " "), sep = ""))
+}else
+{
+    # Find zero points by not accounting for positive slope check (no pixel have this problem)
+    zero_pts <- find_zero_points(climatology_high_res,
+                                 id_date_name = "id_date_extended",
+                                 D_mav_name = "D_mav_high_res_from_stine")
+    log4r::info(logger, "No pixel had slope problem.")
+}
+
 
 # Find number of blooms
 n_blooms <- find_number_of_blooms(zero_pts)
@@ -351,6 +373,7 @@ zero_points_df_high_res <- build_table_zero_points(zero_pts, n_blooms) %>%
     arrange(id_pixel, id_date_zero_crossing)
 
 rm(n_blooms, zero_pts, find_number_of_blooms, find_zero_points, build_table_zero_points)
+rm(pixel_slope_problem, check_slope, find_zero_points_sanitize_slope)
 #-------------------------------------------------------------------------------
 # Generate TABELLA_DUE
 
@@ -482,6 +505,19 @@ climatology_high_res <- climatology_high_res %>%
     arrange(id_pixel, id_date_extended)
     
 rm(corresp)
+
+#-------------------------------------------------------------------------------
+# Barplot of final number of blooms found
+
+print("Percentage % of blooms found:")
+print(round(table(TABELLA_DUE$n_blooms)/sum(table(TABELLA_DUE$n_blooms))*100, 2))
+
+barplot(table(TABELLA_DUE$n_blooms),
+        main = "Final number of blooms found",
+        col = "green",
+        xlab = "Number of blooms",
+        ylab = "Count")
+
 #-------------------------------------------------------------------------------
 # Save results
 

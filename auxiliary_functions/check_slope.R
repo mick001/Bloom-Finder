@@ -20,7 +20,7 @@ check_slope <- function(x, pixels_checked = T)
     k <- 1
     # Non compliant pixels
     non_compliant_pixels <- list()
-    # Second identifier point of zero point of non compliant pixels
+    # Second identifier point of first zero point of non compliant pixels
     identifier <- list()
     j <- 1
     
@@ -46,15 +46,17 @@ check_slope <- function(x, pixels_checked = T)
         deriv_pt1 <- df[ix[1] - 1]
         deriv_pt2 <- df[ix[1]]
         
-        # If point 2 is higher than point 1 then slope wrt time is positive!
+        # If point 2 is higher than point 1 then slope wrt time is positive! Pixel does not have a slope problem
         if(deriv_pt2 > deriv_pt1)
         {
             out_pixels[[k]] <- pixels[i]
             k <- k + 1
         }else
         {
+            # Pixel has a slope problem. Report it.
              non_compliant_pixels[[j]] <- pixels[i]
-             identifier[[j]] <- deriv_pt2
+             # id_date of right identifier of first zero point
+             identifier[[j]] <- ix[1] - 1 
              j <- j + 1
         }
     }
