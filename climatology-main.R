@@ -378,7 +378,8 @@ rm(pixel_slope_problem, check_slope, find_zero_points_sanitize_slope)
 # Generate TABELLA_DUE
 
 ################################################################################
-## Strong hypothesis: D_mav has positive slope in the first zero point
+## Strong hypothesis: D_mav has positive slope in the first zero point. This
+#                     hypothesis is enforced by the script.
 ################################################################################
 
 # Content of TABELLA_DUE
