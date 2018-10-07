@@ -3,7 +3,7 @@
 #' 
 #' @return A dataframe with maximum chl and corresponding date
 #' 
-find_max_chl <- function()
+find_maximum_chl <- function()
 {
     max_chl <- list()
     date_max_chl <- list()

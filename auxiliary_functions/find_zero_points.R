@@ -23,6 +23,7 @@ find_zero_points <- function(x, id_date_name="id_date", D_mav_name = "D_mav")
     
     # Number of unique pixels that will be examined
     print(paste("Number of pixels to be analysed: ", length(unique_id_pixel)), sep = "")
+    print("Finding zero points...")
     
     # List of zero points
     zero_points <- list()

@@ -2,7 +2,7 @@
 # Bloom finder script V. 2.0
 
 # MANCA CONTROLLO SLOPE
-# Manca check su costruzione tabella due
+# Manca CHECK su costruzione tabella due
 
 #-------------------------------------------------------------------------------
 # Clean workspace
@@ -110,7 +110,7 @@ rm(PERCENTILE_SQUISHING_INTERVAL)
 print("Calculating climatology...")
 
 # Load function to calculate consecutive NAs in climatology
-source(file.path(AUX_FUNCTIONS_PATH, "consecutive_na_count.R"))
+source(file.path(AUX_FUNCTIONS_PATH, "count_pixel_consecutive_NA.R"))
 
 # Number of pixels used as input
 pixels_IN <- length(unique(nc_dataframe$id_pixel))
@@ -131,7 +131,7 @@ climatology <- nc_dataframe %>%
     # Calculate for each pixel: how many missing data are in the climatology (NA_in_climatology_per_pixel) 
     #                           should the pixel be kept? (keep_pixel_NA_consecutive: TRUE -> keep, FALSE -> drop)
     mutate(NA_in_climatology_per_pixel = sum(is.na(avg_chl)),
-           keep_pixel_NA_consecutive = pixel_consecutive_NA(avg_chl, n = MAX_CONSECUTIVE_NA)) %>%
+           keep_pixel_NA_consecutive = count_pixel_consecutive_NA(avg_chl, n = MAX_CONSECUTIVE_NA)) %>%
     # Remove grouping by pixel
     ungroup() %>%
     # If the number of consecutive NAs is > n then that pixel must be removed from analysis
@@ -151,7 +151,7 @@ log4r::info(logger, paste("Pixels used as input: ", pixels_IN, sep = ""))
 log4r::info(logger, paste("Pixels used for analysis: ", pixels_kept, sep = ""))
 log4r::info(logger, paste("Percentage of pixels used for analysis over input: ", signif(pixels_kept/pixels_IN * 100, 4), " %", sep = ""))
 
-rm(pixel_consecutive_NA, MAX_CONSECUTIVE_NA, pixels_IN, pixels_kept, MEAN_FUNCTION)
+rm(count_pixel_consecutive_NA, MAX_CONSECUTIVE_NA, pixels_IN, pixels_kept, MEAN_FUNCTION)
 #-------------------------------------------------------------------------------
 # Add info on longitude and latitude (lon and lat)
 
@@ -222,27 +222,6 @@ rm(RUNNING_AVERAGE_WINDOW, THRESHOLD_PERCENTAGE)
 # - D: time derivative of C
 # - D_mav: Moving average of D
 
-#-------------------------------------------------------------------------------
-# # Positive slope check
-# 
-# # Since later in the script the following assumption is made:
-# ## Strong hypothesis: D_mav has positive slope in the first zero point
-# # a check is performed to analyse only those pixels for which the hypothesis hold
-# 
-# # Load function to do the check
-# source(file.path(AUX_FUNCTIONS_PATH, "check_slope.R"))
-# # Pixel checked and that will be further processed
-# pixel_checked <- check_slope()
-# # Pixel discarded since they do not satisfy hypothesis
-# pixel_discarded <- unique(climatology$id_pixel)[!unique(climatology$id_pixel) %in% pixel_checked]
-# # Log discarded pixels
-# log4r::warn(logger, paste("Pixels discarded due to not satisfying hypothesis: ", pixel_discarded, sep = ""))
-# 
-# # Filter climatology according to checked pixels
-# climatology <- climatology %>%
-#     filter(id_pixel %in% pixel_checked)
-# 
-# rm(check_slope, pixel_checked, pixel_discarded)
 #-------------------------------------------------------------------------------
 # Increase resolution of chl from one observation every 8 days to 1 observation per day
 
@@ -328,8 +307,30 @@ rm(unique_valid_pixels, NEW_STARTING_POINT)
 # Check interpolation quality on a random pixel
 
 source(file.path(AUX_FUNCTIONS_PATH, "actual_vs_interpolated_plots.R"))
-# compare_data_interpolation(1729)
+# actual_vs_interpolated_plots(1729)
 
+#-------------------------------------------------------------------------------
+# Positive slope check
+
+# Since later in the script the following assumption is made:
+## Strong hypothesis: D_mav has positive slope in the first zero point
+# a check is performed to analyse only those pixels for which the hypothesis hold
+
+# # Load function to do the check
+# source(file.path(AUX_FUNCTIONS_PATH, "check_slope.R"))
+# # Pixel checked and that will be further processed
+# pixel_checked <- check_slope()
+# # Pixel discarded since they do not satisfy hypothesis
+# pixel_discarded <- unique(climatology$id_pixel)[!unique(climatology$id_pixel) %in% pixel_checked]
+# # Log discarded pixels
+# log4r::warn(logger, paste("Pixels discarded due to not satisfying hypothesis: ",
+# paste(pixel_discarded, collapse = " "), sep = ""))
+# 
+# # Filter climatology according to checked pixels
+# climatology <- climatology %>%
+#     filter(id_pixel %in% pixel_checked)
+
+# rm(check_slope, pixel_checked, pixel_discarded)
 #-------------------------------------------------------------------------------
 # Find zero points and blooms on the high resolution moving average (i.e. on D_mav_high_res_from_stine)
 
@@ -356,12 +357,12 @@ barplot(table(n_blooms),
         ylab = "Count")
 
 # The data is arranged in a dataframe
-zero_points_df_high_res <- build_table(zero_pts, n_blooms) %>%
+zero_points_df_high_res <- build_table_zero_points(zero_pts, n_blooms) %>%
     # Convert id_date to week
     mutate(id_week_zero_crossing = ceiling(id_date_zero_crossing / 7)) %>%
     arrange(id_pixel, id_date_zero_crossing)
 
-rm(n_blooms, zero_pts, find_number_of_blooms, find_zero_points, build_table)
+rm(n_blooms, zero_pts, find_number_of_blooms, find_zero_points, build_table_zero_points)
 #-------------------------------------------------------------------------------
 # Generate TABELLA_DUE
 
@@ -435,9 +436,9 @@ TABELLA_DUE <- TABELLA_DUE %>%
 
 # Add max chl and date of max chl
 TABELLA_DUE <- TABELLA_DUE %>%
-    bind_cols(find_max_chl())
+    bind_cols(find_maximum_chl())
 
-rm(zero_points_df_high_res, MINIMUM_BLOOM_DURATION_DAYS, find_max_chl)
+rm(zero_points_df_high_res, MINIMUM_BLOOM_DURATION_DAYS, find_maximum_chl)
 #-------------------------------------------------------------------------------
 # Generate TABELLA_TRE
 

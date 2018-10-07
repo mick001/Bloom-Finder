@@ -7,9 +7,9 @@
 #' 
 #' @param id_plixel_to_plot vector to be checked for consecutive missing data
 #' @return void
-#' @example compare_data_interpolation(1729)
+#' @example actual_vs_interpolated_plots(1729)
 #' 
-compare_data_interpolation <- function(id_pixel_to_plot)
+actual_vs_interpolated_plots <- function(id_pixel_to_plot)
 {
     # Set plotting device
     par(mfrow = c(1, 2))

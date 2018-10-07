@@ -6,7 +6,7 @@
 #' @return A dataframe with collected data
 #' 
 #' 
-build_table <- function(zero_pts, n_blooms)
+build_table_zero_points <- function(zero_pts, n_blooms)
 {
     # Nomi dei pixel
     list_names <- names(zero_pts)
