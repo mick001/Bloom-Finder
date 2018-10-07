@@ -3,13 +3,14 @@
 #' 
 #' The check is performed on every pixel in climatology
 #' 
+#' @param x climatology at high resolution
 #' @return vector of pixels that can be further processed
 #' 
-check_slope <- function()
+check_slope <- function(x)
 {
     # Get list of unique pixels
-    pixels <- climatology %>%
-        select(id_pixel) %>%
+    pixels <- x %>%
+        select_("id_pixel") %>%
         distinct() %>%
         pull()
 
@@ -21,9 +22,9 @@ check_slope <- function()
     for(i in 1:length(pixels))
     {
         # Pull out the moving average for the current pixel
-        df <- climatology %>%
+        df <- x %>%
             filter(id_pixel == pixels[i]) %>%
-            select(D_mav) %>%
+            select_("D_mav_high_res_from_stine") %>%
             pull()
         
         # Find zero points

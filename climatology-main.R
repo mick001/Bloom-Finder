@@ -1,7 +1,8 @@
 #-------------------------------------------------------------------------------
-# Bloom finder script V. 2.0
+# Bloom finder script
 
-# MANCA CONTROLLO SLOPE
+# Version: 2.0
+
 # Manca CHECK su costruzione tabella due
 
 #-------------------------------------------------------------------------------
@@ -198,10 +199,10 @@ climatology <- climatology %>%
     # Remove grouping by pixel
     ungroup()
 
-source(file.path(AUX_FUNCTIONS_PATH, "plot_calculated_indeces.R"))
+source(file.path(AUX_FUNCTIONS_PATH, "plot_calculated_indexes.R"))
 
-# Plot pixel 1729 indeces
-# plot_calculated_indeces(1729)
+# Plot pixel 1729 indexes
+plot_calculated_indexes(1729, climatology)
 
 rm(RUNNING_AVERAGE_WINDOW, THRESHOLD_PERCENTAGE)
 #-------------------------------------------------------------------------------
@@ -257,9 +258,9 @@ climatology_high_res <- climatology %>%
 ################################################################################
 #  MAP: shift time series
 
-plot(climatology_high_res$id_date_extended[climatology_high_res$id_pixel == 1729],
-     climatology_high_res$D_mav[climatology_high_res$id_pixel == 1729])
-abline(0, 0)
+# plot(climatology_high_res$id_date_extended[climatology_high_res$id_pixel == 1729],
+#      climatology_high_res$D_mav[climatology_high_res$id_pixel == 1729])
+# abline(0, 0)
 
 climatology_high_res <- climatology_high_res %>%
     # Group by pixel: for each pixel
@@ -276,9 +277,9 @@ climatology_high_res <- climatology_high_res %>%
     select(-placeholder) %>%
     ungroup()
 
-plot(climatology_high_res$new_id_date_extended[climatology_high_res$id_pixel == 1729],
-     climatology_high_res$D_mav[climatology_high_res$id_pixel == 1729])
-abline(0, 0)
+# plot(climatology_high_res$new_id_date_extended[climatology_high_res$id_pixel == 1729],
+#      climatology_high_res$D_mav[climatology_high_res$id_pixel == 1729])
+# abline(0, 0)
 
 # Keep correspondance between the two time axis
 corresp <- climatology_high_res %>%
@@ -307,7 +308,7 @@ rm(unique_valid_pixels, NEW_STARTING_POINT)
 # Check interpolation quality on a random pixel
 
 source(file.path(AUX_FUNCTIONS_PATH, "actual_vs_interpolated_plots.R"))
-# actual_vs_interpolated_plots(1729)
+# actual_vs_interpolated_plots(1729, climatology_high_res)
 
 #-------------------------------------------------------------------------------
 # Positive slope check
@@ -316,21 +317,24 @@ source(file.path(AUX_FUNCTIONS_PATH, "actual_vs_interpolated_plots.R"))
 ## Strong hypothesis: D_mav has positive slope in the first zero point
 # a check is performed to analyse only those pixels for which the hypothesis hold
 
-# # Load function to do the check
-# source(file.path(AUX_FUNCTIONS_PATH, "check_slope.R"))
-# # Pixel checked and that will be further processed
-# pixel_checked <- check_slope()
-# # Pixel discarded since they do not satisfy hypothesis
-# pixel_discarded <- unique(climatology$id_pixel)[!unique(climatology$id_pixel) %in% pixel_checked]
-# # Log discarded pixels
-# log4r::warn(logger, paste("Pixels discarded due to not satisfying hypothesis: ",
-# paste(pixel_discarded, collapse = " "), sep = ""))
-# 
-# # Filter climatology according to checked pixels
-# climatology <- climatology %>%
-#     filter(id_pixel %in% pixel_checked)
+# Load function to do the check
+source(file.path(AUX_FUNCTIONS_PATH, "check_slope.R"))
+# Pixel checked and that will be further processed
+pixel_checked <- check_slope(climatology_high_res)
+# Pixel discarded since they do not satisfy hypothesis
+pixel_discarded <- unique(climatology$id_pixel)[!unique(climatology$id_pixel) %in% pixel_checked]
+# Log discarded pixels
+log4r::warn(logger, paste("Pixels discarded due to not satisfying slope hypothesis: ",
+                          paste(pixel_discarded, collapse = " "), sep = ""))
+log4r::warn(logger, paste("Analysis will continue on: ", length(pixel_checked), " pixels.", sep=""))
+log4r::warn(logger, paste("Analysis will continue on the following pixel percentage: ",
+                          round(length(pixel_checked)/(length(pixel_checked)+length(pixel_discarded))*100, 2),
+                          "%", sep=""))
+# Filter climatology according to checked pixels
+climatology_high_res <- climatology_high_res %>%
+     filter(id_pixel %in% pixel_checked)
 
-# rm(check_slope, pixel_checked, pixel_discarded)
+rm(check_slope, pixel_checked, pixel_discarded)
 #-------------------------------------------------------------------------------
 # Find zero points and blooms on the high resolution moving average (i.e. on D_mav_high_res_from_stine)
 
