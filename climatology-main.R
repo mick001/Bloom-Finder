@@ -48,7 +48,7 @@ NEW_STARTING_POINT <- 210
 #NC_FILES_PATH <- "C:\\users\\michy\\desktop\\christian_paper\\DATA_TEST"
 NC_FILES_PATH <- "C:\\users\\michy\\desktop\\christian_paper\\CHL_DATA_EJS"
 # Auxiliary functions path. This path must point to the folder "auxiliary_functions"
-AUX_FUNCTIONS_PATH <- "C:\\users\\michy\\desktop\\christian_paper\\SCRIPT_2.0\auxiliary_functions"
+AUX_FUNCTIONS_PATH <- "C:\\users\\michy\\desktop\\christian_paper\\SCRIPT_2.0\\auxiliary_functions"
 # Output directory. This path can point to whatever folder you wish
 OUTPUT_PATH <- "C:\\users\\michy\\desktop"
 
@@ -368,11 +368,11 @@ rm(n_blooms, zero_pts, find_number_of_blooms, find_zero_points, build_table_zero
 # - bloom_end_date
 # - bloom_end_week
 # - n_blooms: number of blooms found for this pixel
-# - flagged: TRUE if for this pixel the number of blooms found is >= 3.
 # - lon: longitude
 # - lat: latitude
 # - max_chl: maximum value of chl during bloom
 # - id_date_max_chl: corresponding id_date of max_chl
+# - week_max_chl: corresponding week of the year of max_chl
 
 # Load function to find maximum of chl and corresponding date
 source(file.path(AUX_FUNCTIONS_PATH, "find_maximum_chl.R"))
@@ -455,22 +455,20 @@ TABELLA_DUE <- TABELLA_DUE %>%
            bloom_end_date = floor(bloom_end_date)) %>%
 
     left_join(corresp, by = c("bloom_start_date" = "id_date_extended")) %>%
-
     select(-bloom_start_date) %>%
     rename(bloom_start_date = new_id_date_extended) %>%
 
     left_join(corresp, by = c("bloom_end_date" = "id_date_extended")) %>%
-
     select(-bloom_end_date) %>%
     rename(bloom_end_date = new_id_date_extended) %>%
 
     left_join(corresp, by = c("id_date_max_chl" = "id_date_extended")) %>%
-
     select(-id_date_max_chl) %>%
     rename(id_date_max_chl = new_id_date_extended) %>%
 
     mutate(bloom_start_week = ceiling(bloom_start_date / 7),
-           bloom_end_week = ceiling(bloom_end_date / 7))
+           bloom_end_week = ceiling(bloom_end_date / 7),
+           week_max_chl = ceiling(id_date_max_chl / 7))
 
 
 # Also id_date of climatology_high_res must be reverted to old id_date

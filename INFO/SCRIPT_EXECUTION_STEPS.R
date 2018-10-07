@@ -46,11 +46,11 @@
         # - bloom_end_date
         # - bloom_end_week
         # - n_blooms: number of blooms found for this pixel
-        # - flagged: TRUE if for this pixel the number of blooms found is >= 3.
         # - lon: longitude
         # - lat: latitude
         # - max_chl: maximum value of chl during bloom
         # - id_date_max_chl: corresponding id_date of max_chl
+        # - week_max_chl: corresponding week of the year of max_chl
 #
 # 10. Blooms that last less than the specified number of days in MINIMUM_BLOOM_DURATION_DAYS are removed from TABELLA_DUE.
 #

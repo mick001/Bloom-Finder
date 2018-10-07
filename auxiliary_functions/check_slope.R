@@ -4,9 +4,10 @@
 #' The check is performed on every pixel in climatology
 #' 
 #' @param x climatology at high resolution
+#' @param pixels_checked return pixel checked (T) or second identifier point of zero point?
 #' @return vector of pixels that can be further processed
 #' 
-check_slope <- function(x)
+check_slope <- function(x, pixels_checked = T)
 {
     # Get list of unique pixels
     pixels <- x %>%
@@ -17,6 +18,12 @@ check_slope <- function(x)
     # Pixel list to be returned
     out_pixels <- list()
     k <- 1
+    # Non compliant pixels
+    non_compliant_pixels <- list()
+    # Second identifier point of zero point of non compliant pixels
+    identifier <- list()
+    j <- 1
+    
     # For each pixel, check that the slope in the first zero point is positive,
     # if yes pixel can be further analysed, otherwise no.
     for(i in 1:length(pixels))
@@ -44,9 +51,20 @@ check_slope <- function(x)
         {
             out_pixels[[k]] <- pixels[i]
             k <- k + 1
+        }else
+        {
+             non_compliant_pixels[[j]] <- pixels[i]
+             identifier[[j]] <- deriv_pt2
+             j <- j + 1
         }
     }
 
-    # Pixels to be further analysed
-    return(as.integer(out_pixels))
+    if(pixels_checked)
+    {
+        # Pixels to be further analysed
+        return(as.integer(out_pixels))
+    }else
+    {
+       return(list(non_compliant_pixels, identifier))
+    }
 }
