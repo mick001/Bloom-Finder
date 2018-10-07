@@ -1,5 +1,8 @@
 #-------------------------------------------------------------------------------
-# Bloom finder script V. 1.1
+# Bloom finder script V. 2.0
+
+# MANCA CONTROLLO SLOPE
+# Manca check su costruzione tabella due
 
 #-------------------------------------------------------------------------------
 # Clean workspace
@@ -36,14 +39,17 @@ MEAN_FUNCTION <- "mean"
 MINIMUM_BLOOM_DURATION_DAYS <- 16
 # Pixels with number of blooms >= N_BLOOM_MAX are flagged in TABELLA_TRE
 N_BLOOM_MAX <- 3
+# New starting time of climatology is id_date = 210
+NEW_STARTING_POINT <- 210
 
 #-------------------------------------------------------------------------------
 # Set paths
 
 # Path of .nc files. This path must point to the folder containing the .nc files to be used in the analysis
-NC_FILES_PATH <- "C:\\users\\michy\\desktop\\christian_paper\\DATA_TEST"
+#NC_FILES_PATH <- "C:\\users\\michy\\desktop\\christian_paper\\DATA_TEST"
+NC_FILES_PATH <- "C:\\users\\michy\\desktop\\christian_paper\\CHL_DATA_EJS"
 # Auxiliary functions path. This path must point to the folder "auxiliary_functions"
-AUX_FUNCTIONS_PATH <- "C:\\users\\michy\\desktop\\christian_paper\\SCRIPT\\auxiliary_functions"
+AUX_FUNCTIONS_PATH <- "C:\\users\\michy\\desktop\\christian_paper\\SCRIPT_variazione\\auxiliary_functions"
 # Output directory. This path can point to whatever folder you wish
 OUTPUT_PATH <- "C:\\users\\michy\\desktop"
 
@@ -53,17 +59,37 @@ OUTPUT_PATH <- "C:\\users\\michy\\desktop"
 logger <- log4r::create.logger(logfile = file.path(OUTPUT_PATH, "log_climatology_main.log"),
                                level = "INFO")
 
+# Log parameters of the script
+source(file.path(AUX_FUNCTIONS_PATH, "log_script_parameters.R"))
+log_script_parameters(logger)
+
+rm(log_script_parameters)
+#-------------------------------------------------------------------------------
+# Set mean function to be used for calculating climatology
+
+if(MEAN_FUNCTION == "mean")
+{
+    MEAN_FUNCTION <- function(x){ mean(x, na.rm=T) }
+}else if(MEAN_FUNCTION == "geom")
+{
+    MEAN_FUNCTION <- function(x){ exp(mean(log(x), na.rm = T)) }
+}else
+{
+    MEAN_FUNCTION <- function(x){ mean(x, na.rm=T) }
+    warning("Mean function specified is not correct... using arithmetic mean")
+}
+
 #-------------------------------------------------------------------------------
 # Load data
 
 print("Starting to load data...")
 
 # Load .nc files and extract CHL1_mean
-nc_files_list <- load_all_as_list(path = NC_FILES_PATH, variables = c("CHL1_mean"))
-# Bind all observations in a single dataframe
-nc_dataframe <- assign_id_and_melt(nc_files_list)
+nc_dataframe <- load_all_as_list(path = NC_FILES_PATH, variables = c("CHL1_mean")) %>%
+    # Bind all observations in a single dataframe
+    assign_id_and_melt()
 
-rm(nc_files_list, NC_FILES_PATH)
+rm(NC_FILES_PATH)
 #-------------------------------------------------------------------------------
 # Squish of raw chl data in the selected percentile interval
 
@@ -88,24 +114,6 @@ source(file.path(AUX_FUNCTIONS_PATH, "consecutive_na_count.R"))
 
 # Number of pixels used as input
 pixels_IN <- length(unique(nc_dataframe$id_pixel))
-
-# Set mean function to be used for calculating climatology
-if(MEAN_FUNCTION == "mean")
-{
-    MEAN_FUNCTION <- function(x){ mean(x, na.rm=T) }
-    print("Using arithmetic mean...")
-    log4r::info(logger, "Using arithmetic mean for climatology calculation.")
-}else if(MEAN_FUNCTION == "geom")
-{
-    MEAN_FUNCTION <- function(x){ exp(mean(log(x), na.rm = T)) }
-    print("Using geometric mean...")
-    log4r::info(logger, "Using geometric mean for climatology calculation.")
-}else
-{
-    MEAN_FUNCTION <- function(x){ mean(x, na.rm=T) }
-    warning("Mean function specified is not correct... using arithmetic mean")
-    log4r::info(logger, "Using arithmetic mean for climatology calculation.")
-}
 
 # Calculate climatology
 climatology <- nc_dataframe %>%
@@ -149,15 +157,14 @@ rm(pixel_consecutive_NA, MAX_CONSECUTIVE_NA, pixels_IN, pixels_kept, MEAN_FUNCTI
 
 print("Adding info on longitude and latitude...")
 
-climatology <- nc_dataframe %>%
-    select(lon, lat, id_pixel) %>%
-    distinct() %>%
-    left_join(climatology, ., by = "id_pixel")
-
 # Keep only a dataframe of unique pixels with their coordinates
 nc_dataframe <- nc_dataframe %>%
     select(id_pixel, lon, lat) %>%
     distinct()
+
+# Add info on lat and lon
+climatology <- climatology %>%
+    left_join(nc_dataframe, by = "id_pixel")
 
 #-------------------------------------------------------------------------------
 # Imputation of missing data in climatology using linear interpolation
@@ -176,7 +183,7 @@ print("Calculating useful indeces...")
 
 # Calcola s, A, D, D_mav (moving average)
 climatology <- climatology %>%
-    # Already ungrouped.
+    # Already ungrouped
     group_by(id_pixel) %>%
     # For each pixel, calculate: s = median + a% of median of avg_chl_interpolated
     #                           Anomalies = avg_chl_interpolated - s
@@ -216,81 +223,26 @@ rm(RUNNING_AVERAGE_WINDOW, THRESHOLD_PERCENTAGE)
 # - D_mav: Moving average of D
 
 #-------------------------------------------------------------------------------
-# Positive slope check
-
-# Since later in the script the following assumption is made:
-## Strong hypothesis: D_mav has positive slope in the first zero point
-# a check is performed to analyse only those pixels for which the hypothesis hold
-
-# Load function to do the check
-source(file.path(AUX_FUNCTIONS_PATH, "check_slope.R"))
-# Pixel checked and that will be further processed
-pixel_checked <- check_slope()
-# Pixel discarded since they do not satisfy hypothesis
-pixel_discarded <- unique(climatology$id_pixel)[!unique(climatology$id_pixel) %in% pixel_checked]
-# Log discarded pixels
-log4r::warn(logger, paste("Pixels discarded due to not satisfying hypothesis: ", pixel_discarded, sep = ""))
-
-# Filter climatology according to checked pixels
-climatology <- climatology %>%
-    filter(id_pixel %in% pixel_checked)
-
-rm(check_slope, pixel_checked, pixel_discarded)
-#-------------------------------------------------------------------------------
-# Find zero points on climatology with frequency of 1 observation every 8 days
-
-print("Finding zero points and blooms...")
-
-# Load useful functions
-source(file.path(AUX_FUNCTIONS_PATH, "find_zero_points.R"))
-source(file.path(AUX_FUNCTIONS_PATH, "find_number_of_blooms.R"))
-source(file.path(AUX_FUNCTIONS_PATH, "build_table_zero_points_1.R"))
-
-# Find zero points of each climatology for each pixel
-zero_pts_raw <- find_zero_points(climatology)
-
-# Find number of blooms
-n_blooms_raw <- find_number_of_blooms(zero_pts_raw)
-
-# NOTE:
-# 1. L'intersezione con lo zero si trova indicando due punti: quello prima e quello dopo il cambio di segno del segnale.
-# 2. Ogni bloom è caratterizzato da 2 punti di zero.
-# 3. Il numero di punti di zero trovati è quindi: n_bloom * 2
-# 4. Il numero di punti trovati è quindi: n_bloom * 4
-# 5. Il numero di bloom trovati è quindi: n_bloom = Punti trovati / 4
-
-# Barplot of count of number of blooms found
-print("Count of number of blooms found (on RAW data):")
-table(n_blooms_raw)
-barplot(table(n_blooms_raw),
-        main = "Number of blooms found (RAW data)",
-        col = "blue",
-        xlab = "Number of blooms",
-        ylab = "Count")
-
-# The calculated data is arranged in a dataframe
-zero_points_df <- build_table(zero_pts_raw, n_blooms_raw) %>%
-    # Flag pixels with 3 or more blooms
-    mutate(flagged = n_blooms >= N_BLOOM_MAX,
-           id_week_zero_crossing = ceiling(id_date_zero_crossing / 7)) %>%
-    arrange(id_pixel, id_date_zero_crossing)
-
-# Pixels with a number of blooms equal or higher than 3. Flagged for later insertion in TABELLA_TRE
-flagged_pixels <- zero_points_df %>%
-    filter(flagged == TRUE) %>%
-    select(id_pixel) %>%
-    distinct() %>%
-    pull()
-
-rm(n_blooms_raw, zero_pts_raw)
-#-------------------------------------------------------------------------------
-# Content of zero_points_df:
-
-# - id_pixel
-# - id_date_zero_crossing: sequential points before and after zero-crossing found
-# - n_blooms: number of blooms found for this pixel
-# - flagged: TRUE if for this pixel the number of blooms found is >= N_BLOOM_MAX
-
+# # Positive slope check
+# 
+# # Since later in the script the following assumption is made:
+# ## Strong hypothesis: D_mav has positive slope in the first zero point
+# # a check is performed to analyse only those pixels for which the hypothesis hold
+# 
+# # Load function to do the check
+# source(file.path(AUX_FUNCTIONS_PATH, "check_slope.R"))
+# # Pixel checked and that will be further processed
+# pixel_checked <- check_slope()
+# # Pixel discarded since they do not satisfy hypothesis
+# pixel_discarded <- unique(climatology$id_pixel)[!unique(climatology$id_pixel) %in% pixel_checked]
+# # Log discarded pixels
+# log4r::warn(logger, paste("Pixels discarded due to not satisfying hypothesis: ", pixel_discarded, sep = ""))
+# 
+# # Filter climatology according to checked pixels
+# climatology <- climatology %>%
+#     filter(id_pixel %in% pixel_checked)
+# 
+# rm(check_slope, pixel_checked, pixel_discarded)
 #-------------------------------------------------------------------------------
 # Increase resolution of chl from one observation every 8 days to 1 observation per day
 
@@ -300,8 +252,7 @@ rm(n_blooms_raw, zero_pts_raw)
 print("Interpolating data to increase time resolution from 8 days to 1 day...")
 
 # Extract list of pixels to interpolate
-unique_valid_pixels <- zero_points_df %>%
-#    filter(flagged == FALSE) %>%
+unique_valid_pixels <- climatology %>%
     select(id_pixel) %>%
     distinct() %>%
     pull()
@@ -309,8 +260,8 @@ unique_valid_pixels <- zero_points_df %>%
 print(paste("Interpolating ", length(unique_valid_pixels), " pixels...", sep = ""))
 
 # New climatology dataframe with new time axis with finer time resolution
-climatology_high_res <- data.frame(id_pixel = rep(unique_valid_pixels, each = 328),
-                       id_date_extended = rep(1:328, length(unique_valid_pixels))) %>%
+climatology_high_res <- data.frame(id_pixel = rep(unique_valid_pixels, each = 361),
+                       id_date_extended = rep(0:360, length(unique_valid_pixels))) %>%
     as_tibble() %>%
     arrange(id_pixel, id_date_extended)
 
@@ -320,8 +271,50 @@ climatology_high_res <- climatology %>%
            id_date,
            avg_chl_interpolated,
            D_mav) %>%
-    filter(id_pixel %in% unique_valid_pixels) %>%
     left_join(climatology_high_res, ., by = c("id_pixel", "id_date_extended" = "id_date"))
+
+#-------------------------------------------------------------------------------
+################################################################################
+################################################################################
+#  MAP: shift time series
+
+plot(climatology_high_res$id_date_extended[climatology_high_res$id_pixel == 1729],
+     climatology_high_res$D_mav[climatology_high_res$id_pixel == 1729])
+abline(0, 0)
+
+climatology_high_res <- climatology_high_res %>%
+    # Group by pixel: for each pixel
+    group_by(id_pixel) %>%
+    # Assign placeholder depending on new starting point
+    mutate(placeholder = case_when(
+        id_date_extended < NEW_STARTING_POINT ~ 2,
+        id_date_extended >= NEW_STARTING_POINT ~ 1)) %>%
+    # Reorder each time series according to placeholder and id_date_extended
+    arrange(id_pixel, placeholder, id_date_extended) %>%
+    # Assign the new id_date_extended (new_id_date_extended)
+    mutate(new_id_date_extended = 0:(n() - 1)) %>%
+    # Remove unused columns
+    select(-placeholder) %>%
+    ungroup()
+
+plot(climatology_high_res$new_id_date_extended[climatology_high_res$id_pixel == 1729],
+     climatology_high_res$D_mav[climatology_high_res$id_pixel == 1729])
+abline(0, 0)
+
+# Keep correspondance between the two time axis
+corresp <- climatology_high_res %>%
+    select(id_date_extended,
+           new_id_date_extended) %>%
+    distinct()
+
+# Remove unused columns and rename the new_id_date_extended
+climatology_high_res <- climatology_high_res %>%
+    select(-id_date_extended) %>%
+    rename(id_date_extended = new_id_date_extended)
+
+################################################################################
+################################################################################
+###
 
 # Interpolate (by pixel) using Stineman algorithm
 climatology_high_res <- climatology_high_res %>%
@@ -330,17 +323,20 @@ climatology_high_res <- climatology_high_res %>%
            D_mav_high_res_from_stine = imputeTS::na.interpolation(D_mav, option="stine")) %>%
     ungroup()
 
-rm(zero_points_df)
+rm(unique_valid_pixels, NEW_STARTING_POINT)
 #-------------------------------------------------------------------------------
 # Check interpolation quality on a random pixel
 
 source(file.path(AUX_FUNCTIONS_PATH, "actual_vs_interpolated_plots.R"))
-# compare_data_interpolation(2624)
+# compare_data_interpolation(1729)
 
 #-------------------------------------------------------------------------------
 # Find zero points and blooms on the high resolution moving average (i.e. on D_mav_high_res_from_stine)
 
 print("Finding zero points and blooms on finer data...")
+source(file.path(AUX_FUNCTIONS_PATH, "find_zero_points.R"))
+source(file.path(AUX_FUNCTIONS_PATH, "find_number_of_blooms.R"))
+source(file.path(AUX_FUNCTIONS_PATH, "build_table_zero_points_1.R"))
 
 # Find zero points of each climatology
 zero_pts <- find_zero_points(climatology_high_res,
@@ -351,8 +347,8 @@ zero_pts <- find_zero_points(climatology_high_res,
 n_blooms <- find_number_of_blooms(zero_pts)
 
 # Barplot of frequency of number of blooms found
-print("Number of blooms found (high resolution):")
-table(n_blooms)
+print("Percentage of blooms found (high resolution):")
+signif(table(n_blooms)/sum(table(n_blooms)), 2)*100
 barplot(table(n_blooms),
         main = "Number of blooms found (high res)",
         col = "green",
@@ -365,13 +361,7 @@ zero_points_df_high_res <- build_table(zero_pts, n_blooms) %>%
     mutate(id_week_zero_crossing = ceiling(id_date_zero_crossing / 7)) %>%
     arrange(id_pixel, id_date_zero_crossing)
 
-rm(n_blooms, zero_pts)
-#-------------------------------------------------------------------------------
-# Some pixels may have more blooms now due to interpolation process
-
-# compare_data_interpolation(2807)
-# plot_calculated_indeces(2807)
-
+rm(n_blooms, zero_pts, find_number_of_blooms, find_zero_points, build_table)
 #-------------------------------------------------------------------------------
 # Generate TABELLA_DUE
 
@@ -395,7 +385,7 @@ rm(n_blooms, zero_pts)
 # - max_chl: maximum value of chl during bloom
 # - id_date_max_chl: corresponding id_date of max_chl
 
-# Load function to find maximum
+# Load function to find maximum of chl and corresponding date
 source(file.path(AUX_FUNCTIONS_PATH, "find_maximum_chl.R"))
 
 TABELLA_DUE <- zero_points_df_high_res %>%
@@ -462,10 +452,58 @@ rm(zero_points_df_high_res, MINIMUM_BLOOM_DURATION_DAYS, find_max_chl)
 TABELLA_TRE <- TABELLA_DUE %>%
     select(id_pixel, n_blooms) %>%
     distinct() %>%
-    left_join(nc_dataframe, ., by = c("id_pixel")) %>%
-    mutate(too_many_blooms = id_pixel %in% flagged_pixels)
+    left_join(nc_dataframe, ., by = c("id_pixel"))
 
 rm(nc_dataframe)
+#-------------------------------------------------------------------------------
+
+################################################################################
+################################################################################
+# Tabella DUE va riportata alla vecchia id_date...
+
+# Problema 1. I bloom vanno "asfaltati"... lo faccio con floor.
+# Il giorno di bloom (start/end) è quindi, per convenzione, il primo dei due che
+# giorni che lo indentificano
+
+TABELLA_DUE <- TABELLA_DUE %>%
+    mutate(bloom_start_date = floor(bloom_start_date),
+           bloom_end_date = floor(bloom_end_date)) %>%
+#TABELLA_DUE <- TABELLA_DUE %>%
+    left_join(corresp, by = c("bloom_start_date" = "id_date_extended")) %>%
+#TABELLA_DUE <- TABELLA_DUE %>%
+    select(-bloom_start_date) %>%
+    rename(bloom_start_date = new_id_date_extended) %>%
+#TABELLA_DUE <- TABELLA_DUE %>%
+    left_join(corresp, by = c("bloom_end_date" = "id_date_extended")) %>%
+#TABELLA_DUE <- TABELLA_DUE %>%
+    select(-bloom_end_date) %>%
+    rename(bloom_end_date = new_id_date_extended) %>%
+#TABELLA_DUE <- TABELLA_DUE %>%
+    left_join(corresp, by = c("id_date_max_chl" = "id_date_extended")) %>%
+#TABELLA_DUE <- TABELLA_DUE %>%
+    select(-id_date_max_chl) %>%
+    rename(id_date_max_chl = new_id_date_extended) %>%
+#TABELLA_DUE <- TABELLA_DUE %>%
+    mutate(bloom_start_week = ceiling(bloom_start_date / 7),
+           bloom_end_week = ceiling(bloom_end_date / 7))
+
+
+################################################################################
+# Anche climatology_high_res va riportata al vecchio indice temporale
+corresp <- corresp %>%
+    rename(old_id_date_extended = id_date_extended)
+
+climatology_high_res <- climatology_high_res %>%
+    left_join(corresp, by = c("id_date_extended" = "new_id_date_extended")) %>%
+    select(-id_date_extended) %>%
+    rename(id_date_extended = old_id_date_extended) %>%
+    arrange(id_pixel, id_date_extended)
+    
+
+################################################################################
+
+###
+rm(corresp)
 #-------------------------------------------------------------------------------
 # Save results
 
@@ -473,3 +511,9 @@ readr::write_csv(climatology, file.path(OUTPUT_PATH, "climatology.csv"))
 readr::write_csv(climatology_high_res, file.path(OUTPUT_PATH, "climatology_high_res.csv"))
 readr::write_csv(TABELLA_DUE, file.path(OUTPUT_PATH, "TABELLA_DUE.csv"))
 readr::write_csv(TABELLA_TRE, file.path(OUTPUT_PATH, "TABELLA_TRE.csv"))
+
+#-------------------------------------------------------------------------------
+# Log the end of the script execution
+
+log4r::info(logger, "**** END OF SCRIPT EXECUTION ****")
+log4r::info(logger, rep("", 2))
