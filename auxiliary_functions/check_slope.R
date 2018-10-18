@@ -47,17 +47,34 @@ check_slope <- function(x, pixels_checked = T)
         deriv_pt2 <- df[ix[1]]
         
         # If point 2 is higher than point 1 then slope wrt time is positive! Pixel does not have a slope problem
-        if(deriv_pt2 > deriv_pt1)
+        
+        # Check for NULL...
+        if(!is.null(deriv_pt2 > deriv_pt1))
         {
-            out_pixels[[k]] <- pixels[i]
-            k <- k + 1
+            # If there's no NULL then check the slope...
+            if(deriv_pt2 > deriv_pt1)
+            {
+                out_pixels[[k]] <- pixels[i]
+                k <- k + 1
+            }else
+            {
+                # Pixel has a slope problem. Report it.
+                non_compliant_pixels[[j]] <- pixels[i]
+                # id_date of right identifier of first zero point
+                identifier[[j]] <- ix[1] - 1 
+                j <- j + 1
+            }
+            
         }else
         {
-            # Pixel has a slope problem. Report it.
-             non_compliant_pixels[[j]] <- pixels[i]
-             # id_date of right identifier of first zero point
-             identifier[[j]] <- ix[1] - 1 
-             j <- j + 1
+            print("NULL found!!!!")
+            print(pixels[i])
+            
+            # Pixel has some other problem. Report it.
+            non_compliant_pixels[[j]] <- pixels[i]
+            # id_date of right identifier of first zero point
+            identifier[[j]] <- ix[1] - 1 
+            j <- j + 1
         }
     }
 

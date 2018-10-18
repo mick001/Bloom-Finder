@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------------------
 # Bloom finder script
 
-# Version: 2.1
+# Version: 2.2
 
 #-------------------------------------------------------------------------------
 # Clean workspace
@@ -465,7 +465,10 @@ rm(zero_points_df_high_res, MINIMUM_BLOOM_DURATION_DAYS, find_maximum_chl)
 TABELLA_TRE <- TABELLA_DUE %>%
     select(id_pixel, n_blooms) %>%
     distinct() %>%
-    left_join(nc_dataframe, ., by = c("id_pixel"))
+    left_join(nc_dataframe, ., by = c("id_pixel")) %>%
+    mutate(too_many_blooms = case_when(n_blooms >= N_BLOOM_MAX ~ TRUE,
+                                       n_blooms < N_BLOOM_MAX ~ FALSE,
+                                       TRUE ~ NA))
 
 rm(nc_dataframe)
 #-------------------------------------------------------------------------------
