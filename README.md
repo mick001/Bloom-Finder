@@ -13,7 +13,7 @@ A R script to find blooms from geographic data.
 
 Carefully note that the script may or may not work with higher versions (assuming backward compatibility is ensured then higher versions of the packages can be used).
 
-## Execution checklist for Bloom finder script
+## Execution checklist
 The execution checklist and instructions can be found in the file SCRIPT_EXECUTION_INSTRUCTION.R
 
 ## Execution steps description
