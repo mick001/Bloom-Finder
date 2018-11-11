@@ -306,31 +306,6 @@ source(file.path(AUX_FUNCTIONS_PATH, "actual_vs_interpolated_plots.R"))
 # actual_vs_interpolated_plots(1729, climatology_high_res)
 
 #-------------------------------------------------------------------------------
-# Positive slope check: not executed since a solution has been found
-
-# # Since later in the script the following assumption is made:
-# ## Strong hypothesis: D_mav has positive slope in the first zero point
-# # a check is performed to analyse only those pixels for which the hypothesis hold
-# 
-# # Load function to do the check
-# source(file.path(AUX_FUNCTIONS_PATH, "check_slope.R"))
-# # Pixel checked and that will be further processed
-# pixel_checked <- check_slope(climatology_high_res)
-# # Pixel discarded since they do not satisfy hypothesis
-# pixel_discarded <- unique(climatology$id_pixel)[!unique(climatology$id_pixel) %in% pixel_checked]
-# # Log discarded pixels
-# log4r::warn(logger, paste("Pixels discarded due to not satisfying slope hypothesis: ",
-#                           paste(pixel_discarded, collapse = " "), sep = ""))
-# log4r::warn(logger, paste("Analysis will continue on: ", length(pixel_checked), " pixels.", sep=""))
-# log4r::warn(logger, paste("Analysis will continue on the following pixel percentage: ",
-#                           round(length(pixel_checked)/(length(pixel_checked)+length(pixel_discarded))*100, 2),
-#                           "%", sep=""))
-# # Filter climatology according to checked pixels
-# climatology_high_res <- climatology_high_res %>%
-#      filter(id_pixel %in% pixel_checked)
-# 
-# rm(check_slope, pixel_checked, pixel_discarded)
-
 # Finds pixels with slope problem and point where to cut to remove the problem
 source(file.path(AUX_FUNCTIONS_PATH, "check_slope.R"))
 pixel_slope_problem <- check_slope(climatology_high_res, pixels_checked = F)
