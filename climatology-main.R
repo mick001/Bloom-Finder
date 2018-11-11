@@ -40,6 +40,9 @@ MINIMUM_BLOOM_DURATION_DAYS <- 16
 N_BLOOM_MAX <- 3
 # New starting time of climatology is id_date = 210
 NEW_STARTING_POINT <- 210
+# This variable is to separate spring and fall blooms. If bloom_start > 165 then bloom is in fall
+# otherwise it is in spring
+SPRING_FALL_ID_DATE_SEPARATOR <- 165
 
 #-------------------------------------------------------------------------------
 # Set paths
@@ -397,6 +400,8 @@ rm(pixel_slope_problem, check_slope, find_zero_points_sanitize_slope)
 # - max_chl: maximum value of chl during bloom
 # - id_date_max_chl: corresponding id_date of max_chl
 # - week_max_chl: corresponding week of the year of max_chl
+# - too_many_blooms: TRUE if for this pixel the number of blooms found is >= N_BLOOM_MAX.
+# - bloom_season: if bloom_start_date > SPRING_FALL_ID_DATE_SEPARATOR then "S" otherwise "F"
 
 # Load function to find maximum of chl and corresponding date
 source(file.path(AUX_FUNCTIONS_PATH, "find_maximum_chl.R"))
@@ -450,27 +455,14 @@ TABELLA_DUE <- TABELLA_DUE %>%
 TABELLA_DUE <- TABELLA_DUE %>%
     bind_cols(find_maximum_chl())
 
-rm(zero_points_df_high_res, MINIMUM_BLOOM_DURATION_DAYS, find_maximum_chl)
-#-------------------------------------------------------------------------------
-# Generate TABELLA_TRE
+# Add variable too_many blooms
 
-# Content of TABELLA_TRE
-
-# - id_pixel: unique pixel id
-# - lon: longitude
-# - lat: latitude
-# - n_blooms: number of blooms found for this pixel
-# - too_many_blooms: TRUE if for this pixel the number of blooms found is >= N_BLOOM_MAX.
-
-TABELLA_TRE <- TABELLA_DUE %>%
-    select(id_pixel, n_blooms) %>%
-    distinct() %>%
-    left_join(nc_dataframe, ., by = c("id_pixel")) %>%
+TABELLA_DUE <- TABELLA_DUE %>%
     mutate(too_many_blooms = case_when(n_blooms >= N_BLOOM_MAX ~ TRUE,
                                        n_blooms < N_BLOOM_MAX ~ FALSE,
                                        TRUE ~ NA))
 
-rm(nc_dataframe)
+rm(zero_points_df_high_res, MINIMUM_BLOOM_DURATION_DAYS, find_maximum_chl, nc_dataframe)
 #-------------------------------------------------------------------------------
 # Get back TABELLA_DUE to old id_date...
 
@@ -511,6 +503,15 @@ climatology_high_res <- climatology_high_res %>%
 rm(corresp)
 
 #-------------------------------------------------------------------------------
+# Identify if bloom is in spring (S) or in fall (F)
+
+TABELLA_DUE <- TABELLA_DUE %>%
+    mutate(bloom_season = case_when(bloom_start_date > SPRING_FALL_ID_DATE_SEPARATOR ~ "F",
+                                    bloom_start_date <= SPRING_FALL_ID_DATE_SEPARATOR  ~ "S",
+                                    TRUE ~ as.character(NA)))
+
+rm(SPRING_FALL_ID_DATE_SEPARATOR)
+#-------------------------------------------------------------------------------
 # Barplot of final number of blooms found
 
 print("Percentage % of blooms found:")
@@ -528,7 +529,6 @@ barplot(table(TABELLA_DUE$n_blooms),
 readr::write_csv(climatology, file.path(OUTPUT_PATH, "climatology.csv"))
 readr::write_csv(climatology_high_res, file.path(OUTPUT_PATH, "climatology_high_res.csv"))
 readr::write_csv(TABELLA_DUE, file.path(OUTPUT_PATH, "TABELLA_DUE.csv"))
-readr::write_csv(TABELLA_TRE, file.path(OUTPUT_PATH, "TABELLA_TRE.csv"))
 
 #-------------------------------------------------------------------------------
 # Log the end of the script execution

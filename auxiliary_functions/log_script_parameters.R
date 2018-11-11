@@ -40,6 +40,10 @@ log_script_parameters <- function(logger)
                               NEW_STARTING_POINT,
                               sep = ""))
     
+    log4r::info(logger, paste("SPRING_FALL_ID_DATE_SEPARATOR: ",
+                              SPRING_FALL_ID_DATE_SEPARATOR,
+                              sep = ""))
+    
     log4r::info(logger, paste("NC_FILES_PATH: ",
                               NC_FILES_PATH,
                               sep = ""))
