@@ -55,7 +55,13 @@
 #     # This variable is to separate spring and fall blooms. If bloom_start > 165 then bloom is in fall
 #     otherwise it is in spring
 #     SPRING_FALL_ID_DATE_SEPARATOR <- 165
-# 
+#
+#     # Starting year to analyze data (included)
+#     STARTING_YEAR <- 2001
+#
+#     # Ending year to analyze data (included). NOTE: it must be STARTING_YEAR <= ENDING_YEAR
+#     ENDING_YEAR <- 2002
+#
 # 3. Set the required paths
 # 
 #     # Path of .nc files. This path must point to the folder containing .nc files

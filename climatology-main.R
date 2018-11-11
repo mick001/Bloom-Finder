@@ -43,6 +43,11 @@ NEW_STARTING_POINT <- 210
 # This variable is to separate spring and fall blooms. If bloom_start > 165 then bloom is in fall
 # otherwise it is in spring
 SPRING_FALL_ID_DATE_SEPARATOR <- 165
+# Starting year to analyze data (included)
+STARTING_YEAR <- 2001
+# Ending year to analyze data (included). NOTE: it must be STARTING_YEAR <= ENDING_YEAR
+# If STARTING_YEAR == ENDING_YEAR then only 1 year will be analyzed.
+ENDING_YEAR <- 2001
 
 #-------------------------------------------------------------------------------
 # Set paths
@@ -87,11 +92,14 @@ if(MEAN_FUNCTION == "mean")
 print("Starting to load data...")
 
 # Load .nc files and extract CHL1_mean
-nc_dataframe <- load_all_as_list(path = NC_FILES_PATH, variables = c("CHL1_mean")) %>%
+nc_dataframe <- load_all_as_list(path = NC_FILES_PATH,
+                                 from = paste(STARTING_YEAR, "-01-01", sep = ""),
+                                 to = paste(ENDING_YEAR, "-12-31", sep = ""),
+                                 variables = c("CHL1_mean")) %>%
     # Bind all observations in a single dataframe
     assign_id_and_melt()
 
-rm(NC_FILES_PATH)
+rm(NC_FILES_PATH, STARTING_YEAR, ENDING_YEAR)
 #-------------------------------------------------------------------------------
 # Squish of raw chl data in the selected percentile interval
 

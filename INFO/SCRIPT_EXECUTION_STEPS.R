@@ -7,7 +7,7 @@
 #
 # 0. A log file called "log_climatology_main.log" is saved in the specified OUTPUT_PATH.
 #
-# 1. Data is loaded from the specified data directory NC_FILES_PATH.
+# 1. Data is loaded from the specified data directory NC_FILES_PATH within the specified window of years.
 #
 # 2. After grouping by pixel and by date, data is squished in the required percentile range.
 #    Note that this operation is done by pixel and by date, that is, percentile range is calculated
