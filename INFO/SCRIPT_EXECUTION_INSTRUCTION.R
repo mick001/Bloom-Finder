@@ -51,6 +51,10 @@
 #
 #     # New starting time of climatology is id_date = 210
 #     NEW_STARTING_POINT <- 210
+#
+#     # This variable is to separate spring and fall blooms. If bloom_start > 165 then bloom is in fall
+#     otherwise it is in spring
+#     SPRING_FALL_ID_DATE_SEPARATOR <- 165
 # 
 # 3. Set the required paths
 # 
@@ -70,7 +74,6 @@
 #     climatology
 #     climatology_high_res
 #     TABELLA_DUE
-#     TABELLA_TRE
 # 
 # 6. To quickly inspect graphically single pixels, use the following functions
 # 

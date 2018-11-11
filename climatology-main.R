@@ -36,7 +36,7 @@ PERCENTILE_SQUISHING_INTERVAL <- c(0.05, 0.95)
 MEAN_FUNCTION <- "mean"
 # Minimum duration in days for a suspected bloom to be considered an actual bloom
 MINIMUM_BLOOM_DURATION_DAYS <- 16
-# Pixels with number of blooms >= N_BLOOM_MAX are flagged in TABELLA_TRE
+# Pixels with number of blooms >= N_BLOOM_MAX are flagged in TABELLA_DUE
 N_BLOOM_MAX <- 3
 # New starting time of climatology is id_date = 210
 NEW_STARTING_POINT <- 210

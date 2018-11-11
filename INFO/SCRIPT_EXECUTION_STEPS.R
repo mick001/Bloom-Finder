@@ -51,23 +51,13 @@
         # - max_chl: maximum value of chl during bloom
         # - id_date_max_chl: corresponding id_date of max_chl
         # - week_max_chl: corresponding week of the year of max_chl
+        # - too_many_blooms: TRUE if for this pixel the number of blooms found is >= N_BLOOM_MAX
 #
 # 10. Blooms that last less than the specified number of days in MINIMUM_BLOOM_DURATION_DAYS are removed from TABELLA_DUE.
 #
-# 11. Quantities of interest are calculated and stored in TABELLA_TRE
+# 11. The following tables are saved in .csv format in OUTPUT_PATH:
 #
-    # Content of TABELLA_TRE
-    
-        # - id_pixel: unique pixel id
-        # - lon: longitude
-        # - lat: latitude
-        # - n_blooms: number of blooms found for this pixel
-        # - too_many_blooms: TRUE if for this pixel the number of blooms found is >= N_BLOOM_MAX.
-#
-# 12. The following tables are saved in .csv format in OUTPUT_PATH:
-#
-        # TABELLA_DUE: results as specified in 11.
-        # TABELLA_TRE: results as specified in 13.
+        # TABELLA_DUE: results as specified in 9.
         # climatology: low resolution climatology data and indeces (1 observation each 8 days of the year)
         # climatology_high_res: high resolution climatology data and indeces (1 observation per day of the year)
 #        
