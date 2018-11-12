@@ -48,6 +48,10 @@ STARTING_YEAR <- 2001
 # Ending year to analyze data (included). NOTE: it must be STARTING_YEAR <= ENDING_YEAR
 # If STARTING_YEAR == ENDING_YEAR then only 1 year will be analyzed.
 ENDING_YEAR <- 2001
+# Years to be analyzed in the script (by default from starting year to ending year)
+# replace with years to analyze if you want to analyze non-consecutive years, for example:
+# YEARS_TO_ANALYZE <- c(2000, 2002, 2004)
+YEARS_TO_ANALYZE <- c(STARTING_YEAR:ENDING_YEAR)
 
 #-------------------------------------------------------------------------------
 # Set paths
@@ -99,7 +103,10 @@ nc_dataframe <- load_all_as_list(path = NC_FILES_PATH,
     # Bind all observations in a single dataframe
     assign_id_and_melt()
 
-rm(NC_FILES_PATH, STARTING_YEAR, ENDING_YEAR)
+# Keep only years to be analyzed
+nc_dataframe <- nc_dataframe %>% filter(year %in% YEARS_TO_ANALYZE)
+
+rm(NC_FILES_PATH, STARTING_YEAR, ENDING_YEAR, YEARS_TO_ANALYZE)
 #-------------------------------------------------------------------------------
 # Squish of raw chl data in the selected percentile interval
 
@@ -439,7 +446,6 @@ TABELLA_DUE <- TABELLA_DUE %>%
     bind_cols(find_maximum_chl())
 
 # Add variable too_many blooms
-
 TABELLA_DUE <- TABELLA_DUE %>%
     mutate(too_many_blooms = case_when(n_blooms >= N_BLOOM_MAX ~ TRUE,
                                        n_blooms < N_BLOOM_MAX ~ FALSE,

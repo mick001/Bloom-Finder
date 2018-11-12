@@ -62,6 +62,12 @@
 #     # Ending year to analyze data (included). NOTE: it must be STARTING_YEAR <= ENDING_YEAR
 #     ENDING_YEAR <- 2002
 #
+#     # Years to be analyzed in the script (by default from starting year to ending year)
+#     # replace with years to analyze if you want to analyze non-consecutive years, for example:
+#     # YEARS_TO_ANALYZE <- c(2000, 2002, 2004)
+#     YEARS_TO_ANALYZE <- c(STARTING_YEAR:ENDING_YEAR)
+#
+#
 # 3. Set the required paths
 # 
 #     # Path of .nc files. This path must point to the folder containing .nc files
