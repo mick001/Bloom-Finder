@@ -17,7 +17,7 @@
 plot_calculated_indexes <- function(id_pixel_to_plot, x)
 {
     # Set plot device, 2 rows and 3 columns
-    par(mfrow = c(2,3))
+    par(mfrow = c(2, 2))
     # Get pixel data
     pixel <- x %>% filter(id_pixel == id_pixel_to_plot)
     
@@ -35,14 +35,8 @@ plot_calculated_indexes <- function(id_pixel_to_plot, x)
         # Anomalies
         plot(pixel$id_date, pixel$A, type="p", pch = 18, col = "red", xlab = "id_date", ylab = "Anomalies", main = "Anomalies")
         lines(pixel$id_date, pixel$A, lwd = 2, col = "blue")
-        # Cumulative sum of anomalies
-        plot(pixel$id_date, pixel$C, type="p", pch = 18, col = "red", xlab = "id_date", ylab = "C. sum", main = "Cumulative sum of anomalies")
-        lines(pixel$id_date, pixel$C, lwd = 2, col = "blue")
-        # Derivative of cumulative sum of anomalies
-        plot(pixel$id_date, pixel$D, type="p", pch = 18, col = "red", xlab = "id_date", ylab = "Derivative", main = "Derivative of cumulative sum")
-        lines(pixel$id_date, pixel$D, lwd = 2, col = "blue")
-        # Moving average of D
-        plot(pixel$id_date, pixel$D_mav, type="p", pch = 18, col = "red", xlab = "id_date", ylab = "Moving average", main = "Derivative with moving average")
+        # Filtered (smoothed) anomalies
+        plot(pixel$id_date, pixel$D_mav, type="p", pch = 18, col = "red", xlab = "id_date", ylab = "Smoothed anomalies", main = "Smoothed A")
         lines(pixel$id_date, pixel$D_mav, lwd = 2, col = "blue")
         abline(0, 0, lwd=2)
         

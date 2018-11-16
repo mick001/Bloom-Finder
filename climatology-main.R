@@ -28,8 +28,6 @@ require(scales)       # 0.5.0
 MAX_CONSECUTIVE_NA <- 2
 # Threshold percentage to calculate s = median(chl) * (1 + THRESHOLD_PERCENTAGE)
 THRESHOLD_PERCENTAGE <- 0.05
-# Number of observations to be used in the moving average of C (cumulative sum of anomalies)
-RUNNING_AVERAGE_WINDOW <- 3
 # Percentile interval into which raw chl data needs to be squished into
 PERCENTILE_SQUISHING_INTERVAL <- c(0.05, 0.95)
 # Average operation to be used for climatology calculation. Set to "geom" for geometric mean
@@ -44,14 +42,27 @@ NEW_STARTING_POINT <- 210
 # otherwise it is in spring
 SPRING_FALL_ID_DATE_SEPARATOR <- 165
 # Starting year to analyze data (included)
-STARTING_YEAR <- 2001
+STARTING_YEAR <- 1998
 # Ending year to analyze data (included). NOTE: it must be STARTING_YEAR <= ENDING_YEAR
-# If STARTING_YEAR == ENDING_YEAR then only 1 year will be analyzed.
-ENDING_YEAR <- 2001
+# If STARTING_YEAR == ENDING_YEAR then only 1 year will be analyzed
+ENDING_YEAR <- 2017
 # Years to be analyzed in the script (by default from starting year to ending year)
 # replace with years to analyze if you want to analyze non-consecutive years, for example:
 # YEARS_TO_ANALYZE <- c(2000, 2002, 2004)
 YEARS_TO_ANALYZE <- c(STARTING_YEAR:ENDING_YEAR)
+
+# Filter function to be used: chose from mav, kernelSm, spline, loess
+FILTER_NAME <- "mav"
+# Number of observations to be used in the moving average
+RUNNING_AVERAGE_WINDOW <- 3
+# Kernel to be used (see ?ksmooth)
+KERNEL <- "normal"
+# Kernel bandwidth (see ?ksmooth)
+BANDWIDTH <- 50
+# Equivalent number of degrees of freedom for smooth.spline (see ?smooth.spline)
+DF <- 35
+# Parameter alpha which controls the degree of smoothing (see ? loess)
+SPAN <- 0.3
 
 #-------------------------------------------------------------------------------
 # Set paths
@@ -198,6 +209,9 @@ climatology <- climatology %>%
 
 print("Calculating useful indeces...")
 
+# Loading filter function
+source(file.path(AUX_FUNCTIONS_PATH, "filter_function.R"))
+
 # Calcola s, A, D, D_mav (moving average)
 climatology <- climatology %>%
     # Already ungrouped
@@ -209,9 +223,13 @@ climatology <- climatology %>%
     #                           D_mav = moving average (or running average) of D
     mutate(s = median(avg_chl_interpolated)*(1 + THRESHOLD_PERCENTAGE),
            A = avg_chl_interpolated - s,
-           C = cumsum(A),
-           D = (C - dplyr::lag(C)) / 8, # 8 days observations
-           D_mav = TTR::runMean(D, RUNNING_AVERAGE_WINDOW)) %>%
+           D_mav = filter_function(A,
+                                   filter_name = FILTER_NAME,
+                                   n = RUNNING_AVERAGE_WINDOW,
+                                   kernel = KERNEL,
+                                   bandwidth = BANDWIDTH,
+                                   df = DF,
+                                   span = SPAN) ) %>%
     # Remove grouping by pixel
     ungroup()
 
@@ -220,7 +238,8 @@ source(file.path(AUX_FUNCTIONS_PATH, "plot_calculated_indexes.R"))
 # Plot pixel 1729 indexes
 plot_calculated_indexes(1729, climatology)
 
-rm(RUNNING_AVERAGE_WINDOW, THRESHOLD_PERCENTAGE)
+rm(RUNNING_AVERAGE_WINDOW, THRESHOLD_PERCENTAGE, filter_function)
+rm(FILTER_NAME, KERNEL, BANDWIDTH, DF, SPAN)
 #-------------------------------------------------------------------------------
 # Content of dataframe climatology:
 
@@ -235,9 +254,7 @@ rm(RUNNING_AVERAGE_WINDOW, THRESHOLD_PERCENTAGE)
 # - avg_chl_interpolated: climatology avg_chl linearly interpolated (to impute missing values)
 # - s: median + a % of median of avg_chl_interpolated
 # - A: avg_chl_interpolated - s
-# - C: cumulative sum of A
-# - D: time derivative of C
-# - D_mav: Moving average of D
+# - D_mav: Smoothed anomalies through the specified smoothing function in FILTER_NAME
 
 #-------------------------------------------------------------------------------
 # Increase resolution of chl from one observation every 8 days to 1 observation per day
@@ -524,3 +541,4 @@ readr::write_csv(TABELLA_DUE, file.path(OUTPUT_PATH, "TABELLA_DUE.csv"))
 
 log4r::info(logger, "**** END OF SCRIPT EXECUTION ****")
 log4r::info(logger, rep("", 2))
+

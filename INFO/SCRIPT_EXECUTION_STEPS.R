@@ -19,13 +19,11 @@
 #
 # 5. Missing data in climatology is obtained interpolating linearly by pixel.
 #
-# 6. For each pixel, the following time series are calculated on climatology: s, A, C, D, D_mav
+# 6. For each pixel, the following time series are calculated on climatology: s, A, D_mav
 #   
     #   s = median + a % of median
     #   Anomalies = climatology - s
-    #   C = cumulative sum of anomalies
-    #   D = time derivative of cumulative sum of anomalies
-    #   D_mav = moving average (or running average of derivative)
+    #   D_mav = smoothed Anomalies through the specified smoothing function in FILTER_NAME
 #
 # 7. Just before increasing the resolution of the data, the time axis is shifted so that
 #    the time series can begin from a point defined by the user.
@@ -66,9 +64,9 @@
         # - id_pixel: unique pixel id
         # - id_date_extended: day of the year of data with frequency 1 observation every day
         # - avg_chl_interpolated: climatology avg_chl linearly interpolated (to impute missing values)
-        # - D_mav: moving average of derivative of cumulative sum of anomalies (or running average of derivative)
+        # - D_mav: smoothed anomalies
         # - avg_chl_interpolated_high_res: avg_chl with higher resolution (1 observation every day)
-        # - D_mav_high_res_from_stine: D_mav with higher resolution (1 observation every day)
+        # - D_mav_high_res_from_stine: smoothed anomalies with higher resolution (1 observation every day)
 #
     # Content of climatology
         
@@ -83,7 +81,5 @@
         # - avg_chl_interpolated: climatology avg_chl linearly interpolated (to impute missing values)
         # - s: median + a % of median of avg_chl_interpolated
         # - A: avg_chl_interpolated - s
-        # - C: cumulative sum of A
-        # - D: time derivative of C
-        # - D_mav: Moving average of D
+        # - D_mav: Smoothed A
 #        

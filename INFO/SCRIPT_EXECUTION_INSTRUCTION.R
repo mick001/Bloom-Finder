@@ -34,9 +34,6 @@
 #     # Threshold percentage to calculate s index = median(chl) * (1 + THRESHOLD_PERCENTAGE)
 #     THRESHOLD_PERCENTAGE <- 0.05
 #     
-#     # Number of observations to be used in the moving average
-#     RUNNING_AVERAGE_WINDOW <- 3
-#     
 #     # Percentile interval into which climatology data needs to be squished
 #     PERCENTILE_SQUISHING_INTERVAL <- c(0.05, 0.95)
 #     
@@ -67,6 +64,24 @@
 #     # YEARS_TO_ANALYZE <- c(2000, 2002, 2004)
 #     YEARS_TO_ANALYZE <- c(STARTING_YEAR:ENDING_YEAR)
 #
+
+#     # Filter function to be used: chose from mav, kernelSm, spline, loess
+#     FILTER_NAME <- "mav"
+#
+#     # Number of observations to be used in the moving average
+#     RUNNING_AVERAGE_WINDOW <- 3
+#
+#     # Kernel to be used (see ?ksmooth)
+#     KERNEL <- "normal"
+#
+#     # Kernel bandwidth (see ?ksmooth)
+#     BANDWIDTH <- 50
+#
+#     # Equivalent number of degrees of freedom for smooth.spline (see ?smooth.spline)
+#     DF <- 35
+#
+#     # Parameter alpha which controls the degree of smoothing (see ? loess)
+#     SPAN <- 0.3
 #
 # 3. Set the required paths
 # 

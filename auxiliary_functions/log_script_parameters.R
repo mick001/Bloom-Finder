@@ -16,8 +16,28 @@ log_script_parameters <- function(logger)
                               THRESHOLD_PERCENTAGE,
                               sep = ""))
     
+    log4r::info(logger, paste("Filter function used: ",
+                              FILTER_NAME,
+                              sep = ""))
+    
     log4r::info(logger, paste("RUNNING_AVERAGE_WINDOW: ",
                               RUNNING_AVERAGE_WINDOW,
+                              sep = ""))
+    
+    log4r::info(logger, paste("KERNEL: ",
+                              KERNEL,
+                              sep = ""))
+    
+    log4r::info(logger, paste("BANDWIDTH: ",
+                              BANDWIDTH,
+                              sep = ""))
+    
+    log4r::info(logger, paste("DF: ",
+                              DF,
+                              sep = ""))
+    
+    log4r::info(logger, paste("SPAN: ",
+                              SPAN,
                               sep = ""))
     
     log4r::info(logger, paste("PERCENTILE_SQUISHING_INTERVAL: ",
